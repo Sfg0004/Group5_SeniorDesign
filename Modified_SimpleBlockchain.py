@@ -99,13 +99,22 @@ def mine_block():
 				'proof': block['proof'],
 				'previous_hash': block['previous_hash']}
 
-	print(f"{response}\n")
+	i = 1
+	for key, value in response.items():
+		print(f"> {key} : {value}")
+		i += 1
+	#print(f"{response}\n")
 
 # Display blockchain in json format
 def display_chain():
 	response = {'chain': blockchain.chain,
 				'length': len(blockchain.chain)}
-	print(f"{response}\n")
+
+	i = 1
+	for key, value in response.items():
+		print(f"> {key} : {value}")
+		i += 1			
+	#print(f"{response}\n")
 
 # Check validity of blockchain
 def valid():
@@ -116,14 +125,24 @@ def valid():
 	else:
 		response = {'message': 'The Blockchain is not valid.'}
 	
-	print(f"{response}\n")
+	i = 1
+	for key, value in response.items():
+		print(f"> {key} : {value}\n")
+		i += 1
+
+	#print(f"{response}\n")
 	
 	# return jsonify(response), 200
 
 
 # Run program
 def main():
+	print("What would you like to do concerning your blockchain?:")
+	print("[1] Mine a Block")
+	print("[2] Checkout Blockchain")
+	print("[3] Check Blockchain Validity")
 	choice = input("Choose 1-3 or q to quit: ")
+
 	while choice != 'q':
 		if choice == 'q':
 			break
@@ -133,7 +152,13 @@ def main():
 			display_chain()
 		elif choice == "3":
 			valid()
+
+		print("\nWhat would you like to do concerning your blockchain?:")
+		print("[1] Mine a Block")
+		print("[2] Checkout Blockchain")
+		print("[3] Check Blockchain Validity")
 		choice = input("Choose 1-3 or q to quit: ")
+		"\n"
 
 if __name__ == "__main__":
 	main()
