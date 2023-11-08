@@ -9,9 +9,11 @@ import datetime
 import hashlib
 
 # To store data
-# in our blockchain
+# in our blockchain w/ IPFS
 import json
 
+#Used to run IPFS
+import os
 
 class Blockchain:
 
@@ -53,6 +55,12 @@ class Blockchain:
 				new_proof += 1
 
 		return new_proof
+
+	#This is the function for Proof of Authentication
+	#and used to mine/secure the block
+	#def proof_of_auth(self, previous_proof):
+	#	new_proof = 1
+	#	check_proof = False
 
 	def hash(self, block):
 		encoded_block = json.dumps(block, sort_keys=True).encode()
@@ -135,12 +143,17 @@ def valid():
 	# return jsonify(response), 200
 
 
+#Runs IPFS program
+def ipfs():
+	os.system("node index.js")
+
 # Run program
 def main():
 	print("What would you like to do concerning your blockchain?:")
 	print("[1] Mine a Block")
 	print("[2] Checkout Blockchain")
 	print("[3] Check Blockchain Validity")
+	print("[4] Upload File to Blockchain")
 	choice = input("Choose 1-3 or q to quit: ")
 
 	while choice != 'q':
@@ -152,11 +165,14 @@ def main():
 			display_chain()
 		elif choice == "3":
 			valid()
+		elif choice == "4":
+			ipfs()
 
 		print("\nWhat would you like to do concerning your blockchain?:")
 		print("[1] Mine a Block")
 		print("[2] Checkout Blockchain")
 		print("[3] Check Blockchain Validity")
+		print("[4] Upload File to Blockchain")
 		choice = input("Choose 1-3 or q to quit: ")
 		"\n"
 
