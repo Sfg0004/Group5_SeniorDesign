@@ -154,7 +154,7 @@ def main():
 	print("[2] Checkout Blockchain")
 	print("[3] Check Blockchain Validity")
 	print("[4] Upload File to Blockchain")
-	choice = input("Choose 1-3 or q to quit: ")
+	choice = input("Choose 1-4 or q to quit: ")
 
 	while choice != 'q':
 		if choice == 'q':
@@ -173,7 +173,7 @@ def main():
 		print("[2] Checkout Blockchain")
 		print("[3] Check Blockchain Validity")
 		print("[4] Upload File to Blockchain")
-		choice = input("Choose 1-3 or q to quit: ")
+		choice = input("Choose 1-4 or q to quit: ")
 		"\n"
 
 if __name__ == "__main__":
