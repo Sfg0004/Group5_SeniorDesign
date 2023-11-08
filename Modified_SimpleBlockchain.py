@@ -153,15 +153,18 @@ def ipfs():
 	print(f"File successfully added to IPFS: {path}")
 	return parsedPath[4]
 
-# Run program
-def main():
+def printMenu():
 	print("What would you like to do concerning your blockchain?:")
 	print("[1] Mine a Block")
 	print("[2] Checkout Blockchain")
 	print("[3] Check Blockchain Validity")
 	print("[4] Upload File to Blockchain")
-	choice = input("Choose 1-4 or q to quit: ")
 
+# Run program
+def main():
+	printMenu()
+	choice = input("Choose 1-4 or q to quit: ")
+	print()
 	while choice != 'q':
 		if choice == 'q':
 			break
@@ -174,11 +177,8 @@ def main():
 		elif choice == "4":
 			hash = ipfs()
 
-		print("\nWhat would you like to do concerning your blockchain?:")
-		print("[1] Mine a Block")
-		print("[2] Checkout Blockchain")
-		print("[3] Check Blockchain Validity")
-		print("[4] Upload File to Blockchain")
+		print()
+		printMenu()
 		choice = input("Choose 1-4 or q to quit: ")
 		print()
 
