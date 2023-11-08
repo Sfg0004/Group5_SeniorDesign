@@ -145,7 +145,13 @@ def valid():
 
 #Runs IPFS program
 def ipfs():
-	os.system("node index.js")
+	os.system("node index.js > file.txt")
+	with open('file.txt') as file:
+		lines = file.readlines()
+	path = lines[2]
+	parsedPath = path.split('/')
+	print(f"File successfully added to IPFS: {path}")
+	return parsedPath[4]
 
 # Run program
 def main():
@@ -166,7 +172,7 @@ def main():
 		elif choice == "3":
 			valid()
 		elif choice == "4":
-			ipfs()
+			hash = ipfs()
 
 		print("\nWhat would you like to do concerning your blockchain?:")
 		print("[1] Mine a Block")
@@ -174,7 +180,7 @@ def main():
 		print("[3] Check Blockchain Validity")
 		print("[4] Upload File to Blockchain")
 		choice = input("Choose 1-4 or q to quit: ")
-		"\n"
+		print()
 
 if __name__ == "__main__":
 	main()
