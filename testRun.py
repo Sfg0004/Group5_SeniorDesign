@@ -16,8 +16,6 @@ import json
 import os
 
 # For retrieving from IPFS
-import ipfsApi
-from urllib.request import urlretrieve
 import requests
 
 class Blockchain:
