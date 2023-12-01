@@ -1,2 +1,0 @@
-smith_chest_xray.png $QmRB39JYBwEqfpDJ5czsBpxrBtwXswTB4HUiiyvhS1b7ii
-doe_info.txt $QmeUp1ciEQnKo9uXLi1SH3V6Z6YQHtMHRgMbzNLaHt6gJH
