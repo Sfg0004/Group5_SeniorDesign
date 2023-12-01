@@ -1,0 +1,3 @@
+Patient Info: Myself
+Radiological Report: Sourced from family member
+png of X-ray, https://en.wikipedia.org/wiki/Chest_radiograph
