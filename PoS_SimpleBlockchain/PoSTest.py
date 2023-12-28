@@ -1,193 +1,163 @@
-# Python program to create Blockchain
-
-# For timestamp
-import datetime
-
-# Calculating the hash
-# in order to add digital
-# fingerprints to the blocks
 import hashlib
-
-# To store data
-# in our blockchain w/ IPFS
 import json
-
-#Used to run IPFS
-import os
-
-#Used for Proof-of-Stake
+import socket
+import threading
 import time
+from datetime import datetime
 
-class Blockchain:
+# Block represents each 'item' in the blockchain
+class Block:
+    def __init__(self, index, timestamp, bpm, hash, prev_hash, validator):
+        self.index = index
+        self.timestamp = timestamp
+        self.bpm = bpm
+        self.hash = hash
+        self.prev_hash = prev_hash
+        self.validator = validator
 
-	# This function is created
-	# to create the very first
-	# block and set its hash to "0"
-	def __init__(self):
-		self.chain = []
-		self.create_block(proof=1, previous_hash='0')
+# Blockchain is a series of validated Blocks
+blockchain = []
+temp_blocks = []
 
-	# This function is created
-	# to add further blocks
-	# into the chain
-	def create_block(self, proof, previous_hash):
-		block = {'index': len(self.chain) + 1,
-				'timestamp': str(datetime.datetime.now()),
-				'proof': proof,
-				'previous_hash': previous_hash}
-		self.chain.append(block)
-		return block
+# candidate_blocks handles incoming blocks for validation
+candidate_blocks = []
 
-	# This function is created
-	# to display the previous block
-	def print_previous_block(self):
-		return self.chain[-1]
+# announcements broadcasts winning validator to all nodes
+announcements = []
 
-	# This is the function for proof of work
-	# and used to successfully mine the block
-	def proof_of_work(self, previous_proof):
-		new_proof = 1
-		check_proof = False
+mutex = threading.Lock()
 
-		while check_proof is False:
-			hash_operation = hashlib.sha256(
-				str(new_proof**2 - previous_proof**2).encode()).hexdigest()
-			if hash_operation[:5] == '00000':
-				check_proof = True
-			else:
-				new_proof += 1
+# validators keeps track of open validators and balances
+validators = {}
 
-		return new_proof
+# SHA256 hashing
+# calculate_hash is a simple SHA256 hashing function
+def calculate_hash(s):
+    h = hashlib.sha256()
+    h.update(s.encode('utf-8'))
+    hashed = h.digest()
+    return hashlib.sha256(hashed).hexdigest()
 
-	#This is the function for Proof of Authentication
-	#and used to mine/secure the block
-	#def proof_of_auth(self, previous_proof):
-	#	new_proof = 1
-	#	check_proof = False
+# calculate_block_hash returns the hash of all block information
+def calculate_block_hash(block):
+    record = str(block.index) + block.timestamp + str(block.bpm) + block.prev_hash
+    return calculate_hash(record)
 
-	#function for hashing
-	def hash(self, block):
-		encoded_block = json.dumps(block, sort_keys=True).encode()
-		return hashlib.sha256(encoded_block).hexdigest()
+# generate_block creates a new block using the previous block's hash
+def generate_block(old_block, bpm, address):
+    t = str(datetime.now())
+    new_block = Block(
+        index=old_block.index + 1,
+        timestamp=t,
+        bpm=bpm,
+        prev_hash=old_block.hash,
+        validator=address,
+        hash=''
+    )
+    new_block.hash = calculate_block_hash(new_block)
+    return new_block
 
-	#function to check the blockchain's validity
-	def chain_valid(self, chain):
-		previous_block = chain[0]
-		block_index = 1
--		
-		while block_index < len(chain):
-			block = chain[block_index]
-			if block['previous_hash'] != self.hash(previous_block):
-				return False	#the hashes do not line up so the blockchain is invalid
+# is_block_valid makes sure the block is valid by checking the index
+# and comparing the hash of the previous block
+def is_block_valid(new_block, old_block):
+    if old_block.index + 1 != new_block.index:
+        return False
 
-			previous_proof = previous_block['proof']
-			proof = block['proof']
-			hash_operation = hashlib.sha256(
-				str(proof**2 - previous_proof**2).encode()).hexdigest()
+    if old_block.hash != new_block.prev_hash:
+        return False
 
-			if hash_operation[:5] != '00000':
-				return False	#if the block wasn't created correctly with consensus mechanism blockchain is invalid
-			previous_block = block
-			block_index += 1
+    if calculate_block_hash(new_block) != new_block.hash:
+        return False
 
-		return True
+    return True
 
-# Create the object
-# of the class blockchain
-blockchain = Blockchain()
+def handle_conn(conn):
+    address = ''
+    
+    conn.sendall("Enter token balance:".encode())
+    balance = int(conn.recv(1024).decode())
 
-# Mining a new block
-def mine_block():
-	previous_block = blockchain.print_previous_block()
-	previous_proof = previous_block['proof']	#gets previous block's proof
-	proof = blockchain.proof_of_work(previous_proof)	#mines with new proof of work
-	previous_hash = blockchain.hash(previous_block)		#gets previous block's hash to store
-	block = blockchain.create_block(proof, previous_hash)	#creates block with all the data required
+    t = str(datetime.now())
+    address = calculate_hash(t)
+    validators[address] = balance
 
-	#output for user to see that the block is mined and info about block
-	response = {'message': 'A block is MINED',
-				'index': block['index'],
-				'timestamp': block['timestamp'],
-				'proof': block['proof'],
-				'previous_hash': block['previous_hash']}
+    conn.sendall("\nEnter a new BPM:".encode())
 
-	i = 1
-	for key, value in response.items():	#output layout for printing the message to terminal
-		print(f"> {key} : {value}")
-		i += 1
-	#print(f"{response}\n")
+    while True:
+        bpm = int(conn.recv(1024).decode())
 
-# Display blockchain in json format
-def display_chain():
-	response = {'chain': blockchain.chain,
-				'length': len(blockchain.chain)}
+        mutex.acquire()
+        old_last_index = blockchain[-1] if blockchain else Block(0, '', 0, '', '', '')
+        mutex.release()
 
-	i = 1
-	for key, value in response.items():
-		print(f"> {key} : {value}")
-		i += 1			
-	#print(f"{response}\n")
+        new_block = generate_block(old_last_index, bpm, address)
 
-# Check validity of blockchain
-#calls to chain_valid to check
-def valid():
-	valid = blockchain.chain_valid(blockchain.chain)	#var holds results of chain_valid function
+        if is_block_valid(new_block, old_last_index):
+            candidate_blocks.append(new_block)
 
-	if valid:
-		response = {'message': 'The Blockchain is valid.'}	#outputs to user in terminal
-	else:
-		response = {'message': 'The Blockchain is not valid.'}	#outputs to suer in terminal
-	
-	i = 1
-	for key, value in response.items():	#output display format
-		print(f"> {key} : {value}\n")
-		i += 1
+        conn.sendall("\nEnter a new BPM:".encode())
 
-	#print(f"{response}\n")
-	
-	# return jsonify(response), 200
+def pick_winner():
+    time.sleep(30)
 
+    mutex.acquire()
+    temp = temp_blocks.copy()
+    mutex.release()
 
-#Runs IPFS program
-def ipfs():
-	os.system("node index.js > file.txt")	#runs the command to begin IPFS code and puts output into file for parsing later
-	with open('file.txt') as file:	#reads the file
-		lines = file.readlines()
-	path = lines[2]
-	parsedPath = path.split('/')	#splits up the file text to get only the needed section (hash)
-	print(f"File successfully added to IPFS: {path}")	#lets user know the file has be successfully uploaded
-	return parsedPath[4]			#retrieves hash
+    lottery_pool = []
+    if temp:
+        for block in temp:
+            if block.validator not in lottery_pool:
+                set_validators = validators.copy()
+                k = set_validators.get(block.validator, 0)
+                lottery_pool.extend([block.validator] * k)
 
-#function for printing the menu for the user each time
-def printMenu():
-	print("What would you like to do concerning your blockchain?:")
-	print("[1] Mine a Block")
-	print("[2] Checkout Blockchain")
-	print("[3] Check Blockchain Validity")
-	print("[4] Upload File to Blockchain")
+        if lottery_pool:
+            lottery_winner = lottery_pool[hash(str(time.time())).int() % len(lottery_pool)]
 
-# Run program
+            for block in temp:
+                if block.validator == lottery_winner:
+                    mutex.acquire()
+                    blockchain.append(block)
+                    mutex.release()
+                    for _ in validators:
+                        announcements.append("\nwinning validator: " + lottery_winner + "\n")
+                    break
+
+    mutex.acquire()
+    temp_blocks.clear()
+    mutex.release()
+
 def main():
-	printMenu()	#prints menu for user to select
-	choice = input("Choose 1-4 or q to quit: ")	#takes user input
-	print()
-	while choice != 'q':
-		if choice == 'q':	#quits program
-			break
-		elif choice == "1":
-			mine_block()	#mines block
-		elif choice == "2":
-			display_chain()	#shows the current blockchain
-		elif choice == "3":
-			valid()		#checks blockchain validity
-		elif choice == "4":
-			hash = ipfs()	#gets file hash for later use
+    # Create genesis block
+    t = str(datetime.now())
+    genesis_block = Block(0, t, 0, calculate_block_hash(Block(0, '', 0, '', '', '')), '', '')
+    print(genesis_block)    #NEED TO ADD HOW THIS WILL PRINT SUCCESSFULLY
+    blockchain.append(genesis_block)
 
-		print()
-		printMenu()	#prints menu again
-		choice = input("Choose 1-4 or q to quit: ") #takes user input
-		print()
+    # Start TCP and serve TCP server
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(('localhost', 4444)) #can change port number if we want
+    server.listen()
 
-#function to run main
+    def handle_candidate_blocks():
+        while True:
+            if candidate_blocks:
+                mutex.acquire()
+                temp_blocks.extend(candidate_blocks)
+                candidate_blocks.clear()
+                mutex.release()
+
+    def handle_pick_winner():
+        while True:
+            pick_winner()
+
+    threading.Thread(target=handle_candidate_blocks).start()
+    threading.Thread(target=handle_pick_winner).start()
+
+    while True:
+        conn, addr = server.accept()
+        threading.Thread(target=handle_conn, args=(conn,)).start()
+
 if __name__ == "__main__":
-	main()
+    main()
