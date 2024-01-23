@@ -75,6 +75,7 @@ def handle_conn(conn):
         address = ""
 
         # Allow the user to allocate the number of tokens to stake
+        io_write(conn, "ASKING FROM HANDLECONN\n")
         io_write(conn, "Enter token balance:")
         balance = int(conn.recv(1024).decode('utf-8'))
 
@@ -83,6 +84,7 @@ def handle_conn(conn):
 
         with validator_lock:
             validators[address] = balance
+            print(validators)
 
         io_write(conn, "\nEnter a new BPM:")
 
@@ -95,14 +97,20 @@ def handle_conn(conn):
 
             if is_block_valid(new_block, old_last_index):
                 candidate_blocks.append(new_block)
-
-            io_write(conn, "\nEnter a new BPM:")
+                io_write(conn, "\nValue is valid")
+                break
+                
+            io_write(conn, "\nNot a valid input.")
+            #io_write(conn, "\nEnter a new BPM:")
+            
+            #io_write(conn, "\nSTUCK IN HANDLECONN")
 
     except Exception as e:
         print(f"Connection closed: {e}")
 
 # pick_winner creates a lottery pool of validators and chooses the validator who gets to forge a block to the blockchain
 def pick_winner():
+    print("\nPicking winner...")
     while True:
         time.sleep(30)
             
@@ -120,7 +128,8 @@ def pick_winner():
                         with validator_lock:
                             blockchain.append(block)
                         for _ in validators:
-                            announcements.append("\nwinning validator: " + lottery_winner + "\n")
+                            io_write(conn, "\nwinning validator: " + lottery_winner + "\n")
+                            #announcements.append("\nwinning validator: " + lottery_winner + "\n")
                         break
 
 def io_write(conn, message):
@@ -176,6 +185,7 @@ def run_client():
         
         # Send BPM values
         while True:
+            io_write(client, "ASKING FROM RUNCLIENT")
             bpm = int(input("Enter a new BPM: "))
             io_write(client, str(bpm))
             print(client.recv(1024).decode('utf-8'))
@@ -200,4 +210,3 @@ def run_client():
 
 if __name__ == "__main__":
     main()
-
