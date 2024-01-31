@@ -23,6 +23,7 @@ class Block:
         h.update(s.encode('utf-8'))
         return h.hexdigest()
 
+
     # calculateBlockHash returns the hash of all block information
     def calculate_block_hash(self):
         record = str(self.index) + self.timestamp + str(self.bpm) + self.prev_hash
@@ -31,6 +32,9 @@ class Block:
 # Blockchain is a series of validated Blocks
 blockchain = []
 temp_blocks = []
+
+#client tcp address array
+nodes = []
 
 # candidate_blocks handles incoming blocks for validation
 candidate_blocks = []
@@ -98,9 +102,10 @@ def handle_conn(conn):
             if is_block_valid(new_block, old_last_index):
                 candidate_blocks.append(new_block)
                 io_write(conn, "\nValue is valid")
-                break
+                #break
                 
-            io_write(conn, "\nNot a valid input.")
+            else:
+                 io_write(conn, "\nNot a valid input.")
             #io_write(conn, "\nEnter a new BPM:")
             
             #io_write(conn, "\nSTUCK IN HANDLECONN")
@@ -115,22 +120,37 @@ def pick_winner():
         time.sleep(30)
             
         with validator_lock:    
+            print("\nPicking winner...1")
             if len(validators) > 0:
+                print("\nPicking winner...2")
                 lottery_winner = max(validators, key=validators.get)
+                print("\nPicking winner...3")
 
                 with candidate_blocks_lock:
+                    print("\nPicking winner...4")
                     global temp_blocks
+                    print("\nPicking winner...5")
                     temp_blocks = list(candidate_blocks)
+                    print("\nPicking winner...6")
                     candidate_blocks.clear()
 
                 for block in temp_blocks:
+                    print("\nPicking winner...7")
                     if block.validator == lottery_winner:
-                        with validator_lock:
-                            blockchain.append(block)
-                        for _ in validators:
-                            io_write(conn, "\nwinning validator: " + lottery_winner + "\n")
+                        print("\nPicking winner...8")
+                        #with validator_lock:
+                        print("\nPicking winner...9")
+                        blockchain.append(block)
+                        print("\nPicking winner...abc")
+                        #for _ in validators:
+                        for x in nodes:
+                            print("\nPicking winner...10")
+                            io_write(x, "\nwinning validator: " + lottery_winner + "\n")
+                            #io_write(x, "\n" + blockchain)
                             #announcements.append("\nwinning validator: " + lottery_winner + "\n")
+                        print("\nPicking winner...11")
                         break
+        print("\nPicking winner...12")
 
 def io_write(conn, message):
     conn.sendall(message.encode('utf-8'))
@@ -148,7 +168,7 @@ def main():
     # Start TCP server
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        server.bind(('localhost', 1111))
+        server.bind(('localhost', 4444))
         server.listen()
         print("Server is running.")
         run_server(server)
@@ -170,6 +190,8 @@ def run_server(server):
     while True:
         conn, addr = server.accept()
         threading.Thread(target=handle_conn, args=(conn,)).start()
+        nodes.append(conn)
+        print("conns:\n",nodes)
         
 def run_client():
     #Client-side code
