@@ -31,6 +31,7 @@ class Block:
 
 # Blockchain is a series of validated Blocks
 blockchain = []
+blockDisplay = []
 temp_blocks = []
 
 #client tcp address array
@@ -117,7 +118,7 @@ def handle_conn(conn):
 def pick_winner():
     print("\nPicking winner...")
     while True:
-        time.sleep(30)
+        time.sleep(10)
             
         with validator_lock:    
             print("\nPicking winner...1")
@@ -141,12 +142,16 @@ def pick_winner():
                         #with validator_lock:
                         print("\nPicking winner...9")
                         blockchain.append(block)
+                        blockDisplay.append
+
                         print("\nPicking winner...abc")
                         #for _ in validators:
                         for x in nodes:
                             print("\nPicking winner...10")
                             io_write(x, "\nwinning validator: " + lottery_winner + "\n")
-                            #io_write(x, "\n" + blockchain)
+                            for block in blockchain:
+                                io_write(x, block.hash)
+                                io_write(x, "\n")
                             #announcements.append("\nwinning validator: " + lottery_winner + "\n")
                         print("\nPicking winner...11")
                         break
