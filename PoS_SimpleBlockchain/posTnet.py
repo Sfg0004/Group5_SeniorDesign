@@ -6,6 +6,7 @@ import random
 import threading
 from datetime import datetime
 from queue import Queue
+import netifaces as ni
 
 # Block represents each 'item' in the blockchain
 class Block:
@@ -61,6 +62,16 @@ def generate_block(old_block, bpm, address):
     new_block = Block(old_block.index + 1, t, bpm, old_block.hash, address)
     return new_block
 
+def printBlockchain(conn):
+    for block in blockchain:
+        print(block.index)
+        io_write(conn, block.index)
+        io_write(conn, block.timestamp)
+        io_write(conn, block.bpm)
+        io_write(conn, block.prev_hash)
+        io_write(conn, block.validator)
+        io_write(conn, block.hash)
+
 # is_block_valid makes sure the block is valid by checking the index
 # and comparing the hash of the previous block
 def is_block_valid(new_block, old_block):
@@ -102,17 +113,19 @@ def handle_conn(conn):
 
             if is_block_valid(new_block, old_last_index):
                 candidate_blocks.append(new_block)
-                io_write(conn, "\nValue is valid")
+                io_write(conn, "\nValue is valid\n")
                 #break
                 
             else:
-                 io_write(conn, "\nNot a valid input.")
+                 io_write(conn, "\nNot a valid input.\n")
             #io_write(conn, "\nEnter a new BPM:")
             
             #io_write(conn, "\nSTUCK IN HANDLECONN")
 
-    except Exception as e:
-        print(f"Connection closed: {e}")
+    except Exception as q:
+        print(f"Connection closed: {q}")
+        io_write(conn, "Connection closing...\n")
+        conn.close()
 
 # pick_winner creates a lottery pool of validators and chooses the validator who gets to forge a block to the blockchain
 def pick_winner():
@@ -149,9 +162,10 @@ def pick_winner():
                         for x in nodes:
                             print("\nPicking winner...10")
                             io_write(x, "\nwinning validator: " + lottery_winner + "\n")
-                            for block in blockchain:
-                                io_write(x, block.hash)
-                                io_write(x, "\n")
+                            printBlockchain(x)
+                            #for block in blockchain:
+                            #    io_write(x, block.hash)
+                            #    io_write(x, "\n")
                             #announcements.append("\nwinning validator: " + lottery_winner + "\n")
                         print("\nPicking winner...11")
                         break
@@ -174,9 +188,10 @@ def main():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         #this now allows for connections across computers
-        host = '146.229.163.145'
+        ip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr']
+        print("my ip: " + ip + "\n")
         port = 5555
-        server.bind((host, port))
+        server.bind((ip, port))
         server.listen()
         print("Server is running.")
         run_server(server)
@@ -196,47 +211,39 @@ def run_server(server):
     winner_thread.start()
     
     while True:
+        print("a")
         conn, addr = server.accept()
+        print("b")
         threading.Thread(target=handle_conn, args=(conn,)).start()
+        print("c")
         nodes.append(conn)
+        print("d")
         print("conns:\n",nodes)
         
-def run_client():
+#def run_client():
     #Client-side code
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect(('localhost', 1111))
+ #   client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+ #  client.connect((host, port))
     
-    try:
+ #   try:
         # Send token balance
-        io_write(client, "Enter token balance:")
-        token_balance = int(client.recv(1024).decode('utf-8'))
-        io_write(client, str(token_balance))
+ #       io_write(client, "Enter token balance:")
+ #       token_balance = int(client.recv(1024).decode('utf-8'))
+  #      io_write(client, str(token_balance))
         
         
         # Send BPM values
-        while True:
-            io_write(client, "ASKING FROM RUNCLIENT")
-            bpm = int(input("Enter a new BPM: "))
-            io_write(client, str(bpm))
-            print(client.recv(1024).decode('utf-8'))
+ #       while True:
+  #          io_write(client, "ASKING FROM RUNCLIENT")
+  #          bpm = int(input("Enter a new BPM: "))
+   #         io_write(client, str(bpm))
+   #         print(client.recv(1024).decode('utf-8'))
             
-    except Exception as e:
-        print(f"Client connection closed: {e}")
+  #  except Exception as q:
+   #     print(f"Client connection closed: {q}")
         
-    finally:
-        client.close()
-
-    # Handle candidate blocks in a separate thread
-    #candidate_thread = threading.Thread(target=lambda: candidate_blocks.append(None) if candidate_blocks else None)
-    #candidate_thread.start()
-
-    # Pick winner thread
-   # winner_thread = threading.Thread(target=pick_winner)
-   # winner_thread.start()
-
-    #while True:
-    #    conn, addr = server.accept()
-    #    threading.Thread(target=handle_conn, args=(conn,)).start()
+   # finally:
+   #     client.close()
 
 if __name__ == "__main__":
     main()
