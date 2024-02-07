@@ -64,13 +64,13 @@ def generate_block(old_block, bpm, address):
 
 def printBlockchain(conn):
     for block in blockchain:
-        print(block.index)
-        io_write(conn, block.index)
-        io_write(conn, block.timestamp)
-        io_write(conn, block.bpm)
-        io_write(conn, block.prev_hash)
-        io_write(conn, block.validator)
-        io_write(conn, block.hash)
+        io_write(conn, "\nIndex: " + str(block.index))
+        io_write(conn, "\nTimestamp: " + block.timestamp)
+        io_write(conn, "\nBPM: " + str(block.bpm))
+        io_write(conn, "\nPrevious Hash: " + block.prev_hash)
+        io_write(conn, "\nValidator: " + block.validator)
+        io_write(conn, "\nHash: " + block.hash)
+        io_write(conn, "\n-----------------------------------------")
 
 # is_block_valid makes sure the block is valid by checking the index
 # and comparing the hash of the previous block
@@ -91,7 +91,6 @@ def handle_conn(conn):
         address = ""
 
         # Allow the user to allocate the number of tokens to stake
-        io_write(conn, "ASKING FROM HANDLECONN\n")
         io_write(conn, "Enter token balance:")
         balance = int(conn.recv(1024).decode('utf-8'))
 
@@ -134,42 +133,24 @@ def pick_winner():
         time.sleep(10)
             
         with validator_lock:    
-            print("\nPicking winner...1")
             if len(validators) > 0:
-                print("\nPicking winner...2")
                 lottery_winner = max(validators, key=validators.get)
-                print("\nPicking winner...3")
 
                 with candidate_blocks_lock:
-                    print("\nPicking winner...4")
                     global temp_blocks
-                    print("\nPicking winner...5")
                     temp_blocks = list(candidate_blocks)
-                    print("\nPicking winner...6")
                     candidate_blocks.clear()
 
                 for block in temp_blocks:
-                    print("\nPicking winner...7")
                     if block.validator == lottery_winner:
-                        print("\nPicking winner...8")
-                        #with validator_lock:
-                        print("\nPicking winner...9")
                         blockchain.append(block)
                         blockDisplay.append
 
-                        print("\nPicking winner...abc")
-                        #for _ in validators:
                         for x in nodes:
-                            print("\nPicking winner...10")
                             io_write(x, "\nwinning validator: " + lottery_winner + "\n")
                             printBlockchain(x)
-                            #for block in blockchain:
-                            #    io_write(x, block.hash)
-                            #    io_write(x, "\n")
-                            #announcements.append("\nwinning validator: " + lottery_winner + "\n")
-                        print("\nPicking winner...11")
+                            io_write(x, "\n")
                         break
-        print("\nPicking winner...12")
 
 def io_write(conn, message):
     conn.sendall(message.encode('utf-8'))
@@ -211,13 +192,9 @@ def run_server(server):
     winner_thread.start()
     
     while True:
-        print("a")
         conn, addr = server.accept()
-        print("b")
         threading.Thread(target=handle_conn, args=(conn,)).start()
-        print("c")
         nodes.append(conn)
-        print("d")
         print("conns:\n",nodes)
         
 #def run_client():
