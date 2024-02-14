@@ -4,6 +4,8 @@ import socket
 import time
 import random
 import threading
+import os
+from random import randint
 from datetime import datetime
 from queue import Queue
 import netifaces as ni
@@ -62,6 +64,25 @@ def generate_block(old_block, bpm, address):
     new_block = Block(old_block.index + 1, t, bpm, old_block.hash, address)
     return new_block
 
+def uploadIpfs(conn):
+    io_write(conn, "Input the path of your file: ") #requests file path
+    fileName = conn.recv(1024).decode('utf-8')
+    print(fileName)
+    command = f"node index.js {fileName[1:-2]} > temp_path.txt"	#runs the command to begin IPFS code and stores into file
+    print(f"{command}")
+    os.system(command)	#used to run command is if done in command prompt
+    with open ('temp_path.txt') as file:
+        lines = file.readlines()	#reads the file
+    path = lines[2]
+    parsedPath = path.split('/')	#splits up the file text
+    print(f"File successfully added to IPFS: {path}")	#lets user know the file has been uploaded successfully
+    return parsedPath[4]	#return hash
+
+def printMenu(conn):
+    io_write(conn, "\n[1] Upload File\n")
+    io_write(conn, "[2] Download File\n")
+    io_write(conn, "[3] Quit\n")
+
 def printBlockchain(conn):
     for block in blockchain:
         io_write(conn, "\nIndex: " + str(block.index))
@@ -88,13 +109,32 @@ def is_block_valid(new_block, old_block):
 
 def handle_conn(conn):
     try:
-        address = ""
 
-        # Allow the user to allocate the number of tokens to stake
-        io_write(conn, "Enter token balance:")
-        balance = int(conn.recv(1024).decode('utf-8'))
+        printMenu(conn)
+        io_write(conn, "Choose 1, 2, or 3 to quit: ")
+        #choice = int(conn.recv(1024).decode('utf-8'))
+        choice = conn.recv(1024).decode('utf-8').strip()
+
+        if choice == "1":
+            io_write(conn, "Uploading File...\n")
+            print("Uploading File...")
+            uploadIpfs(conn)
+        elif choice == "2":
+            io_write(conn, "Downloading File...")
+            print("Downloading File...")
+        elif choice == "3":
+            io_write(conn, "Closing connection...")
+            print("Closing connection...")
+            close.conn()
+        else:
+            io_write(conn, "This sucks...")
+            print("This sucks...")
+
+        #Randomly stakes coins to prevent a favored node
+        balance = randint(0,100)
 
         t = str(datetime.now())
+        address = ""
         address = calculate_hash(t)
 
         with validator_lock:
