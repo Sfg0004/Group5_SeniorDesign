@@ -84,6 +84,20 @@ def generate_sample_blocks():
     blockchain.append(generate_block(blockchain[-1], 0, address, "Upload", "QmeuNtvAJT8HMPgzEyuHCnWiMQkpwHBtAEHmzH854TqJXW", "RADRPT 08-13-2023.pdf"))
     blockchain.append(generate_block(blockchain[-1], 0, address, "Upload", "QmYRJY3Uq8skTrREx7aFkE7Ym7hXA6bk5pqJE9gWrhFB6n", "Project Timeline.pdf"))
 
+# user input handling
+def handle_input(conn, max_num):
+    notValid = True
+    while notValid:
+        try:
+            choice = int(conn.recv(1024).decode('utf-8').strip()) - 1
+            if choice >= 0 and choice < max_num:
+                notValid = False
+            else:   #if input is out of range:
+                io_write(conn, "Input out of range. Try again: ")
+        except ValueError:  #if input is not an int:
+            io_write(conn, "Invalid input. Try again: ")
+    return choice
+
 def uploadIpfs(conn):
     io_write(conn, "Input the path of your file: ") #requests file path
     fileName = conn.recv(1024).decode('utf-8')
@@ -110,7 +124,8 @@ def retrieveIpfs(conn):
         i += 1
     
     io_write(conn, "\n\nInput the number of your desired file: ")
-    choice = int(conn.recv(1024).decode('utf-8').strip()) - 1
+    choice = handle_input(conn, len(ipfs_hashes))
+
     hash = ipfs_hashes[choice]
     url = "https://ipfs.moralis.io:2053/ipfs/" + hash + "/uploaded_file"	#does the url to retrieve the file from IPFS
     r = requests.get(url, allow_redirects=True)
@@ -166,27 +181,24 @@ def handle_conn(conn):
 
         printMenu(conn)
         io_write(conn, "Choose 1, 2, or 3 to quit: ")
-        choice = conn.recv(1024).decode('utf-8').strip()
+        
+        choice = handle_input(conn, 3)
 
         payload = "not_determined"
         transaction_type = "not_determined"
         file_name = "not_determined"
-        if choice == "1":
+        if choice == 0:
             io_write(conn, "Uploading File...\n")
-            print("Uploading File...")
             payload, file_name = uploadIpfs(conn)
             transaction_type = "Upload"
-        elif choice == "2":
+        elif choice == 1:
             io_write(conn, "Downloading File...")
             payload, file_name = retrieveIpfs(conn)
             transaction_type = "Download"
-        elif choice == "3":
+        elif choice == 2:
             io_write(conn, "Closing connection...")
             print("Closing connection...")
             close.conn()
-        else:
-            io_write(conn, "This sucks...")
-            print("This sucks...")
 
         #Randomly stakes coins to prevent a favored node
         balance = randint(0,100)
@@ -268,6 +280,7 @@ def main():
     # comment this line out to start with a fresh blockchain
     generate_sample_blocks()
 
+    # get lists of hashes and file names on start-up
     ipfs_hashes, file_names = getFileList()
 
     # Start TCP server
@@ -276,7 +289,7 @@ def main():
         #this now allows for connections across computers
         ip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr']
         print("my ip: " + ip + "\n")
-        port = 1111
+        port = 5555
         server.bind((ip, port))
         server.listen()
         print("Server is running.")
