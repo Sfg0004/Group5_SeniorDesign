@@ -1,3 +1,7 @@
+#To run server: python3 posTnet.py
+#To run client: nc <ip addr> <port#>
+
+
 import hashlib
 import json
 import socket
@@ -10,19 +14,20 @@ from random import randint
 from datetime import datetime
 from queue import Queue
 import netifaces as ni
+import traceback # for printing error exceptions
 
 # Block represents each 'item' in the blockchain
 class Block:
     def __init__(self, index, timestamp, bpm, prev_hash, validator, transaction_type, payload, file_name):
-        self.index = index
-        self.timestamp = timestamp
-        self.bpm = bpm
-        self.prev_hash = prev_hash
-        self.validator = validator
-        self.hash = self.calculate_block_hash()
-        self.transaction_type = transaction_type
-        self.payload = payload
-        self.file_name = file_name
+        self.index = index                          # block's position in the blockchain
+        self.timestamp = timestamp                  # when block was created (<year>-<mh>-<dy> <hr>:<mi>:<se>.<millis>)
+        self.bpm = bpm                              # default set to 10 for user-added blocks (0 for genesis)
+        self.prev_hash = prev_hash                  # 64-character hash of previous block (blank for genesis)
+        self.validator = validator                  # address of the author (blank for genesis)
+        self.hash = self.calculate_block_hash()     # hash for the block
+        self.transaction_type = transaction_type    # either "Upload", "Download", or "Genesis"
+        self.payload = payload                      # the IPFS hash ("N/A" for genesis)
+        self.file_name = file_name                  # name of uploaded/downloaded file ("no_file" for genesis)
 
         # update this depending on how sign-in/authorization works:
         self.approved_IDs = []
@@ -41,7 +46,6 @@ class Block:
 
 # Blockchain is a series of validated Blocks
 blockchain = []
-blockDisplay = []
 temp_blocks = []
 
 #client tcp address array
@@ -56,6 +60,8 @@ ipfs_hashes = []
 file_names = []
 
 # announcements broadcasts winning validator to all nodes
+# hi this is caleb. this list isn't called anywhere but idk the plan for it so
+# i'm leaving it in
 announcements = []
 
 validator_lock = threading.Lock()
@@ -84,19 +90,63 @@ def generate_sample_blocks():
     blockchain.append(generate_block(blockchain[-1], 0, address, "Upload", "QmeuNtvAJT8HMPgzEyuHCnWiMQkpwHBtAEHmzH854TqJXW", "RADRPT 08-13-2023.pdf"))
     blockchain.append(generate_block(blockchain[-1], 0, address, "Upload", "QmYRJY3Uq8skTrREx7aFkE7Ym7hXA6bk5pqJE9gWrhFB6n", "Project Timeline.pdf"))
 
-# user input handling
+# user input handling for menus (main menu and download)
+# pass the connection and the maximum number listed for choices
 def handle_input(conn, max_num):
-    notValid = True
+    notValid = True     # validity flag to break loop
     while notValid:
         try:
-            choice = int(conn.recv(1024).decode('utf-8').strip()) - 1
-            if choice >= 0 and choice < max_num:
+            choice = conn.recv(1024).decode('utf-8').strip()    # take user's input
+            choice = int(choice) - 1                            # try to convert to int; if not int, go to exception
+            if choice >= 0 and choice < max_num:                # make sure choice is in range
                 notValid = False
-            else:   #if input is out of range:
-                io_write(conn, "Input out of range. Try again: ")
-        except ValueError:  #if input is not an int:
-            io_write(conn, "Invalid input. Try again: ")
+            else:                                               # if input is out of range:
+                io_write(conn, "Invalid input. Try again: ")    #   give error message
+        except ValueError:                                      # if input is not an int:
+            if (choice.lower() == "q") and (max_num < 3):       #   check to see if it's "q" (specifically for main menu)
+                notValid = False
+                choice = 2                                      #   convert choice to 2
+            else:                                               # if not q:
+                io_write(conn, "Invalid input. Try again: ")    #   give error message
     return choice
+
+# 
+def user_input(conn):
+    printMenu(conn)
+    io_write(conn, "Input 1, 2, or q to quit: ")
+    
+    choice = handle_input(conn, 2)
+
+    payload = "not_determined"
+    transaction_type = "not_determined"
+    file_name = "not_determined"
+    if choice == 0:
+        io_write(conn, "Uploading File...\n")
+        payload, file_name = uploadIpfs(conn)
+        transaction_type = "Upload"
+    elif choice == 1:
+        io_write(conn, "Downloading File...")
+        payload, file_name = retrieveIpfs(conn)
+        transaction_type = "Download"
+    elif choice == 2:
+        io_write(conn, "Closing connection...")
+        print("Closing connection...")
+
+    return payload, transaction_type, file_name
+
+def proof_of_stake():
+    #Randomly stakes coins to prevent a favored node
+    balance = randint(0,100)
+
+    t = str(datetime.now())
+    address = ""
+    address = calculate_hash(t)
+
+    with validator_lock:
+        validators[address] = balance
+        print(validators)               # NEEDS TO BE PARSED (based on role)
+
+    return address
 
 def uploadIpfs(conn):
     io_write(conn, "Input the path of your file: ") #requests file path
@@ -147,20 +197,20 @@ def getFileList():
 def printMenu(conn):
     io_write(conn, "\n[1] Upload File\n")
     io_write(conn, "[2] Download File\n")
-    io_write(conn, "[3] Quit\n")
+    io_write(conn, "[q] Quit\n")
 
-def printBlockchain(conn):
+def printBlockchain():
     for block in blockchain:
-        io_write(conn, "\nIndex: " + str(block.index))
-        io_write(conn, "\nTimestamp: " + block.timestamp)
-        io_write(conn, "\nBPM: " + str(block.bpm))
-        io_write(conn, "\nPrevious Hash: " + block.prev_hash)
-        io_write(conn, "\nValidator: " + block.validator)
-        io_write(conn, "\nHash: " + block.hash)
-        io_write(conn, "\nType: " + block.transaction_type)
-        io_write(conn, "\nIPFS Hash: " + block.payload)
-        io_write(conn, "\nFile Name: " + block.file_name)
-        io_write(conn, "\n-----------------------------------------")
+        print("\nIndex: " + str(block.index))
+        print("Timestamp: " + block.timestamp)
+        print("BPM: " + str(block.bpm))
+        print("Previous Hash: " + block.prev_hash)
+        print("Validator: " + block.validator)
+        print("Hash: " + block.hash)
+        print("Type: " + block.transaction_type)
+        print("IPFS Hash: " + block.payload)
+        print("File Name: " + block.file_name)
+        print("-----------------------------------------")
 
 # is_block_valid makes sure the block is valid by checking the index
 # and comparing the hash of the previous block
@@ -178,44 +228,19 @@ def is_block_valid(new_block, old_block):
 
 def handle_conn(conn):
     try:
-
-        printMenu(conn)
-        io_write(conn, "Choose 1, 2, or 3 to quit: ")
-        
-        choice = handle_input(conn, 3)
-
-        payload = "not_determined"
-        transaction_type = "not_determined"
-        file_name = "not_determined"
-        if choice == 0:
-            io_write(conn, "Uploading File...\n")
-            payload, file_name = uploadIpfs(conn)
-            transaction_type = "Upload"
-        elif choice == 1:
-            io_write(conn, "Downloading File...")
-            payload, file_name = retrieveIpfs(conn)
-            transaction_type = "Download"
-        elif choice == 2:
-            io_write(conn, "Closing connection...")
-            print("Closing connection...")
-            close.conn()
-
-        #Randomly stakes coins to prevent a favored node
-        balance = randint(0,100)
-
-        t = str(datetime.now())
-        address = ""
-        address = calculate_hash(t)
-
-        with validator_lock:
-            validators[address] = balance
-            print(validators)
-
-        # io_write(conn, "\nEnter a new BPM:")
+        address = proof_of_stake()
+        io_write(conn, f"\nAddress: {address}\nBalance: {validators[address]}")
+        payload, transaction_type, file_name = user_input(conn)
 
         while True:
+            # if user quit:
+            if payload == "not_determined":
+                # delete validator from dictionary of validators and close connection
+                del validators[address]
+                conn.close()
+                return
+
             # Take in BPM from the client and add it to the blockchain after conducting necessary validation
-            # bpm = int(conn.recv(1024).decode('utf-8'))
             bpm = 10
             with validator_lock:
                 old_last_index = blockchain[-1]
@@ -223,44 +248,80 @@ def handle_conn(conn):
 
             if is_block_valid(new_block, old_last_index):
                 candidate_blocks.append(new_block)
-                io_write(conn, "\nValue is valid")
-                break
                 
             else:
                  io_write(conn, "\nNot a valid input.\n")
-            #io_write(conn, "\nEnter a new BPM:")
-            
-            #io_write(conn, "\nSTUCK IN HANDLECONN")
+
+            payload, transaction_type, file_name = user_input(conn)
 
     except Exception as q:
-        print(f"Connection closed: {q}")
-        io_write(conn, "Connection closing...\n")
+        #print(f"Connection closed: {q}")
+        print(f"Connection closed: {traceback.format_exc()}") # for more detailed error message
         conn.close()
+
+# calculate weighted probability for each validator
+def getLotteryWinner():
+    weighted_validators = validators.copy()
+    balance_total = 0
+    prev_balance = 0
+    chosen_validator = "not_chosen"
+
+    # get the total of all balances and amount of all validators
+    for balance in validators.values():
+        balance_total += balance
+
+    # get a random number to choose lottery winner
+    # print(f"\n\tBalance total: {balance_total}")
+    rand_int = randint(0, balance_total) # * 100)
+
+    # calculate the new balances and choose winner
+    for validator in weighted_validators.keys():
+        balance = weighted_validators[validator]
+        if balance_total > 0:
+            new_balance = balance + prev_balance
+            weighted_validators.update({validator : new_balance})
+            prev_balance = new_balance
+            if new_balance >= rand_int:
+                chosen_validator = validator
+                break
+            # else:
+            #     print(f"\n\tBad comparison! Stake: {new_balance}, Random Num: {rand_int}")
+        else:
+            print(f"\n\tBalance total is 0!")
+
+    # print(f"\n\tChosen validator is {chosen_validator}!")
+    return chosen_validator
 
 # pick_winner creates a lottery pool of validators and chooses the validator who gets to forge a block to the blockchain
 def pick_winner():
     print("\nPicking winner...")
+    # i = 0 # for debugging
     while True:
-        time.sleep(10)
-            
+        time.sleep(.05) # .05 second refresh
         with validator_lock:    
             if len(validators) > 0:
-                lottery_winner = max(validators, key=validators.get)
+                lottery_winner = getLotteryWinner()
 
-                with candidate_blocks_lock:
-                    global temp_blocks
-                    temp_blocks = list(candidate_blocks)
-                    candidate_blocks.clear()
+                # the following block is for checking the accuracy of getLotteryWinner():
+                # if i == 75:
+                #     print(f"\nCurrent validator: {lottery_winner}")
+                #     i = 0
+                # else:
+                #     i += 1
 
-                for block in temp_blocks:
+                for block in candidate_blocks:
                     if block.validator == lottery_winner:
-                        blockchain.append(block)
-                        blockDisplay.append
-
-                        for x in nodes:
-                            io_write(x, "\nwinning validator: " + lottery_winner + "\n")
-                            printBlockchain(x)
-                            io_write(x, "\n")
+                        # make sure candidate index isn't duplicated in existing blockchain (avoid forking):
+                        indexes = []
+                        for approved_block in blockchain:
+                            indexes.append(approved_block.index)
+                        if block.index in indexes:
+                            new_block = generate_block(blockchain[-1], block.bpm, block.validator, block.transaction_type, block.payload, block.file_name)
+                            blockchain.append(new_block)
+                        else:
+                            blockchain.append(block)
+                        candidate_blocks.remove(block)
+                        printBlockchain()
                         break
 
 def io_write(conn, message):
@@ -289,7 +350,7 @@ def main():
         #this now allows for connections across computers
         ip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr']
         print("my ip: " + ip + "\n")
-        port = 5555
+        port = 1111
         server.bind((ip, port))
         server.listen()
         print("Server is running.")
@@ -314,31 +375,6 @@ def run_server(server):
         threading.Thread(target=handle_conn, args=(conn,)).start()
         nodes.append(conn)
         print("conns:\n",nodes)
-        
-#def run_client():
-    #Client-side code
- #   client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
- #  client.connect((host, port))
-    
- #   try:
-        # Send token balance
- #       io_write(client, "Enter token balance:")
- #       token_balance = int(client.recv(1024).decode('utf-8'))
-  #      io_write(client, str(token_balance))
-        
-        
-        # Send BPM values
- #       while True:
-  #          io_write(client, "ASKING FROM RUNCLIENT")
-  #          bpm = int(input("Enter a new BPM: "))
-   #         io_write(client, str(bpm))
-   #         print(client.recv(1024).decode('utf-8'))
-            
-  #  except Exception as q:
-   #     print(f"Client connection closed: {q}")
-        
-   # finally:
-   #     client.close()
 
 if __name__ == "__main__":
     main()
