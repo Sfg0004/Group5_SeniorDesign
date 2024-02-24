@@ -12,6 +12,7 @@ from queue import Queue
 import netifaces as ni
 import shlex  
 from subprocess import Popen, PIPE, STDOUT
+import ipaddress
 
 # Block represents each 'item' in the blockchain
 class Block:
@@ -47,13 +48,14 @@ blockDisplay = []
 temp_blocks = []
 
 #client ip address array
-nodelist = []
-neighbors = [] 
+nodelist = [] #local list of node objects
+iplist = [] #ips only - for sending & receiving node update between nodes
 
 class nodes:
-     def __init__(self, ip, latency):
+     def __init__(self, ip, latency, neighbor):
         self.ip = ip
         self.latency = latency
+        self.neighbor = neighbor
 
 
 # candidate_blocks handles incoming blocks for validation
@@ -152,14 +154,7 @@ def retrieveIpfs(conn):
     io_write(conn, "\n\nAvailable files:\n")
     for name in file_names:
         io_write(conn, "[" + str(i) + "] " + name + "\n")
-        i += 1
-    
-    io_write(conn, "\n\nInput the number of your desired file: ")
-    choice = handle_input(conn, len(ipfs_hashes))
-
-    hash = ipfs_hashes[choice]
-    url = "https://ipfs.moralis.io:2053/ipfs/" + hash + "/uploaded_file"	#does the url to retrieve the file from IPFS
-    r = requests.get(url, allow_redirects=True)
+        i += 1)cts=True)
     file_type = r.headers.get("content-type").split("/")[1]
     file_name = file_names[choice]
     open(file_name, "wb").write(r.content)	#opens the file and adds content
@@ -339,54 +334,114 @@ def run_server(server):
     # Pick winner thread
     winner_thread = threading.Thread(target=pick_winner)
     winner_thread.start()
-    
-    while True:
+
+    while true:
         conn, addr = server.accept()
         threading.Thread(target=handle_conn, args=(conn,)).start()
-
         tup = addr
-        newip = tup[0]
+        ip = tup[0]
+        iplist.append(ip)
+        send_iplist(iplist)
+        addnode(ip)
 
-        req = "{}:4444".format(newip) 
-       # print("req: " + req) troubleshooting
-        latsum = 0
-        for i in range(3):
-            latsum += (get_ping_time(req))
+def addnode(ip): #local
 
-        latency = latsum/3
-
-        #avg 3 times
-
-        nodelist.append(nodes(newip,latency))
-
-        #print("nodes:\n",nodelist)
-        for x in nodelist:
-            print(x.ip,"{:.3f}".format(x.latency))
+    req = "{}:4444".format(ip)  # print("req: " + req) troubleshooting
+    latsum = 0
+    for i in range(3):
+        latsum += (get_ping_time(req))
+    latency = latsum/3 #avg 3 times
+    nodelist.append(nodes(ip,latency, false))
+    for x in nodelist:
+        print(x.ip,"{:.3f}".format(x.latency), x.neighbor)
+    local_refresh_iplist(iplist, ip, "add")
         
-#def run_client():
-    #Client-side code
- #   client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
- #  client.connect((host, port))
-    
- #   try:
-        # Send token balance
- #       io_write(client, "Enter token balance:")
- #       token_balance = int(client.recv(1024).decode('utf-8'))
-  #      io_write(client, str(token_balance))
-        
-        
-        # Send BPM values
- #       while True:
-  #          io_write(client, "ASKING FROM RUNCLIENT")
-  #          bpm = int(input("Enter a new BPM: "))
-   #         io_write(client, str(bpm))
-   #         print(client.recv(1024).decode('utf-8'))
-            
-  #  except Exception as q:
-   #     print(f"Client connection closed: {q}")
-        
-   # finally:
-   #     client.close()
+def deletenode(ip) #local
+     for x in nodelist:
+        if node.ip == ip
+            nodelist.remove(x)
+            del x
+    local_refresh_iplist(iplist, ip, "delete")
+
+def refresh_neighbors(nodelist) #local
+
+    neighborcount = 0
+    for node in nodelist:
+        if (node.neighbor = true):
+            node.neighbor = false
+    lownode = nodelist[0]
+    for i in range(2):
+        if (neighborcount < 2):
+            lowlat = 999 #latency to beat
+            for node in nodelist:
+                if ((node.latency < lowlat) && (!node.neighbor))
+                    lowlat = node.latency
+                    lownode = node
+            lownode.neighbor = true
+
+def message_refresh_iplist(locallist, receivedlist): #called after iplist recieved from neighbors
+
+    locallist = order_iplist(locallist) #order inputs
+    receivedlist = order_iplist(receivedlist)
+
+    refreshedlist = []
+
+    for ip in locallist:
+        try:
+            receivedlist.index(ip)
+            refreshedlist.append(ip)
+        except:
+            deletenode(ip)
+
+
+    for jp in receivedlist:
+        try:
+            locallist.index(jp)
+        except:
+            addnode(jp)
+            refreshedlist.append(jp)
+
+    refreshedlist = order_iplist(refreshedlist)
+    print(refreshedlist)
+
+     
+    #priority - checks own ip presence
+    refresh_neighbors(nodelist)
+
+    refreshedlist = order_iplist(refreshedlist)
+    return refreshedlist
+
+def local_refresh_iplist(iplist, ip, mode): #called after node locally added or deleted, called every so often per time period..
+
+    if (mode=="add")
+        iplist.append(ip)
+
+    elif (mode=="delete")
+        iplist.remove(ip)
+    #priority - checks own ip presence
+    refresh_neighbors(nodelist)
+
+    iplist = order_iplist(iplist)
+    send_iplist(iplist)
+    return iplist
+
+def send_iplist(iplist):
+
+    iplist = order_iplist(iplist)
+    print("send ip stub: implement soon")
+    print(iplist)
+    print("end stub")
+
+def order_iplist(iplist):
+
+    sortedips = []
+    sortedips = sorted(iplist, key =lambda j: ''.join(('00'+j.split('.')[i])[-3::] for i in range(4))) #sort ips
+    for ip in range(len(iplist)): #loop to remove duplicates
+        if ip<len(iplist)-1:
+            if(iplist[ip]==iplist[ip+1]):
+                sortedips.remove(iplist[ip])
+    return sortedips
+
 
 if __name__ == "__main__":
     main()
