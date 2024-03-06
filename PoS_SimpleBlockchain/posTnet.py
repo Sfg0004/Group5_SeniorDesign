@@ -130,11 +130,11 @@ def user_input(conn):
         transaction_type = "Download"
     elif choice == 2:
         io_write(conn, "Closing connection...")
-        print("Closing connection...")
+        # print("Closing connection...")
 
     return payload, transaction_type, file_name
 
-def proof_of_stake():
+def createValidator():
     #Randomly stakes coins to prevent a favored node
     balance = randint(0,100)
 
@@ -144,9 +144,11 @@ def proof_of_stake():
 
     with validator_lock:
         validators[address] = balance
-        print(validators)               # NEEDS TO BE PARSED (based on role)
+        print(validators)               
 
     return address
+
+    # NEEDS TO BE PARSED (based on role)
 
 def uploadIpfs(conn):
     io_write(conn, "Input the path of your file: ") #requests file path
@@ -226,10 +228,10 @@ def is_block_valid(new_block, old_block):
 
     return True
 
-def handle_conn(conn):
+def main_client_loop(conn):
     try:
-        address = proof_of_stake()
-        io_write(conn, f"\nAddress: {address}\nBalance: {validators[address]}")
+        address = createValidator()
+        # io_write(conn, f"\nAddress: {address}\nBalance: {validators[address]}")
         payload, transaction_type, file_name = user_input(conn)
 
         while True:
@@ -271,25 +273,18 @@ def getLotteryWinner():
         balance_total += balance
 
     # get a random number to choose lottery winner
-    # print(f"\n\tBalance total: {balance_total}")
-    rand_int = randint(0, balance_total) # * 100)
+    rand_int = randint(0, balance_total)
 
     # calculate the new balances and choose winner
     for validator in weighted_validators.keys():
         balance = weighted_validators[validator]
-        if balance_total > 0:
-            new_balance = balance + prev_balance
-            weighted_validators.update({validator : new_balance})
-            prev_balance = new_balance
-            if new_balance >= rand_int:
-                chosen_validator = validator
-                break
-            # else:
-            #     print(f"\n\tBad comparison! Stake: {new_balance}, Random Num: {rand_int}")
-        else:
-            print(f"\n\tBalance total is 0!")
+        new_balance = balance + prev_balance
+        weighted_validators.update({validator : new_balance})
+        prev_balance = new_balance
+        if new_balance >= rand_int:
+            chosen_validator = validator
+            break
 
-    # print(f"\n\tChosen validator is {chosen_validator}!")
     return chosen_validator
 
 # pick_winner creates a lottery pool of validators and chooses the validator who gets to forge a block to the blockchain
@@ -297,7 +292,7 @@ def pick_winner():
     print("\nPicking winner...")
     # i = 0 # for debugging
     while True:
-        time.sleep(.05) # .05 second refresh
+        time.sleep(0.05) # .05 second refresh
         with validator_lock:    
             if len(validators) > 0:
                 lottery_winner = getLotteryWinner()
@@ -339,7 +334,7 @@ def main():
     
     # hi this is caleb. I added this function to test the downloading option.
     # comment this line out to start with a fresh blockchain
-    generate_sample_blocks()
+    # generate_sample_blocks()
 
     # get lists of hashes and file names on start-up
     ipfs_hashes, file_names = getFileList()
@@ -350,7 +345,7 @@ def main():
         #this now allows for connections across computers
         ip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr']
         print("my ip: " + ip + "\n")
-        port = 1111
+        port = 5555
         server.bind((ip, port))
         server.listen()
         print("Server is running.")
@@ -372,7 +367,7 @@ def run_server(server):
     
     while True:
         conn, addr = server.accept()
-        threading.Thread(target=handle_conn, args=(conn,)).start()
+        threading.Thread(target=main_client_loop, args=(conn,)).start()
         nodes.append(conn)
         print("conns:\n",nodes)
 
