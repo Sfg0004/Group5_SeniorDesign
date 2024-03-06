@@ -3,7 +3,7 @@ import base64
 import secrets
 
 #Function to generate an AES 256 key
-def generateAES256KKeY():
+def generateAES256Key():
     #Generates 32B random key for AES-256
     return secrets.token_bytes(32)
 
@@ -56,7 +56,7 @@ def decryptFile(symmetricKey, encryptedFileLocation, saveLocation):
 """Sample program showing usage of this code"""
 """""""""
 #Converts the AES 256 key into its base 64 format for fernet to process
-symmetricKey = base64.urlsafe_b64encode(generateAES256KKeY())
+symmetricKey = base64.urlsafe_b64encode(generateAES256Key())
 
 #Saves the key to the given file
 saveKey(symmetricKey, "symmetric.pem")
