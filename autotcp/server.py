@@ -19,7 +19,7 @@ def server_program():
     # create a socket object
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    server_ip = "127.0.0.1"
+    server_ip = "146.229.163.147"
     port = 8000
 
     # bind the socket to a specific address and port
