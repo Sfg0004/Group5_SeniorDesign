@@ -20,7 +20,7 @@ def server_program():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     server_ip = "146.229.163.147"
-    port = 8000
+    port = 11112
 
     # bind the socket to a specific address and port
     server.bind((server_ip, port))
@@ -36,7 +36,18 @@ def server_program():
     while True:
         request = client_socket.recv(1024)
         request = request.decode("utf-8") # convert bytes to string
+        ip_split = request.split("on ")
+        temp = ip_split[1]
+        temp2 = temp.partition(",")
+        port_split = request.split("port: ")
         
+        client_ip = temp2[0]
+        client_port = port_split[1]
+        
+        #close connectport connection and start new sustained connection
+        
+        print(f"ip_split: {temp2[0]}")
+        print(f"port_split: {port_split[1]}")
         # if we receive "close" from the client, then we break
         # out of the loop and close the conneciton
         if request.lower() == "close":
