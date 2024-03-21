@@ -15,6 +15,11 @@ from datetime import datetime
 from queue import Queue
 import netifaces as ni
 
+#T here, import these to use the encryption
+import asymmetricEncryption as AE
+import symmetricEncryption as SE
+import rsa
+
 class Validator:
     def __init__(self, balance, account): # account is an Account object!
         self.address = account.username
@@ -259,9 +264,30 @@ def createValidator(conn):
 
     # NEEDS TO BE PARSED (based on role)
 
-def uploadIpfs(conn, author):
+def uploadIpfs(conn, author):#def uploadIpfs(conn, symmetricKey):
     io_write(conn, "Input the path of your file: ") #requests file path
     fileName = conn.recv(1024).decode('utf-8')
+
+
+    #Might need to save a copy of the uploaded file to the UploadedFile Port lists
+    #T, here. Copy the file and make the nzew one encrypted.
+    #Then, upload the encrypted file
+    #Then, delete the encrypted file
+    """
+    #Gets the location of the current working directory
+    tempFilePath = os.getcwd() + "/.tmp"
+    tempFilename = fileName.split('/')[-1]     #Gets the name of the file
+    encryptedFileLocation = tempFilePath + "/" + tempFilename
+    #Make sure the file exists and that it is hidden
+    if not os.path.exists(tempFilePath):
+        os.mkdir(tempFilePath)      #Makes the directory
+        os.system(f'attrib +h "{tempFilePath}"')        #Makes it hidden
+    #T here, use the symmetric key to copy and encrypt the file before sending it on
+    SE.encryptFile(symmetricKey, fileName, encryptedFileLocation)
+    #In the command line, replace fileName[1:-3] with encryptedFileLocation
+    """
+
+
     command = f"node index.js {fileName[1:-3]} > temp_path.txt"	#runs the command to begin IPFS code and stores into file
     os.system(command)	#used to run command is if done in command prompt
     with open ('temp_path.txt') as file:
@@ -275,12 +301,15 @@ def uploadIpfs(conn, author):
     ipfsHashes.append(hash)        # update the hash and file lists
     fileNames.append(fileName)
 
+    #Deletes the temorary upload file
+    #os.remove(encryptedFileLocation)
+
     accessList = []
     newFileData = FileData(hash, fileName, author, accessList)
 
     return newFileData
 
-def retrieveIpfs(conn, author):
+def retrieveIpfs(conn, author):#def retrieveIpfs(conn, symmetricKey):
     i = 1
     io_write(conn, "\n\nAvailable files:\n")
     for name in fileNames:
@@ -297,6 +326,11 @@ def retrieveIpfs(conn, author):
     fileName = fileNames[choice]
     with open(fileName, "wb") as f:
         f.write(r.content)	#opens the file and adds content
+
+    #T here, Use symmetric key to decrypt the file, r.content
+    #This function opens the first file, reads the dencrypted data, closes the file
+    #Ten opens the second file, clears it, writes all decrypted data to it, then closes the file
+    #SE.decryptFile(symmetricKey, file_name, file_name)
 
     io_write(conn, "Finished! Your file: " + fileName + "\n")	#Lets user know retrieval was successful
     
@@ -388,6 +422,11 @@ def is_block_valid(newBlock, oldBlock):
 
 def main_client_loop(conn):
     try:
+
+        #T here, 
+        #Generates the keys
+        #publicKey, privateKey, nullKey = genKeys()
+
         # address = createValidator(conn)
         # DEBUGGING STATEMENT: io_write(conn, f"\nAddress: {address}\nBalance: {validators[address]}")
         validator = createValidator(conn)
@@ -403,6 +442,8 @@ def main_client_loop(conn):
                 del validator
                 conn.close()
                 return
+
+            #T here, If I underrstand correctly, this is where the communications are done, so maybe have a condition 'if playload == "get_key":'
 
             with validator_lock:
                 old_last_index = blockchain[-1]
@@ -490,6 +531,60 @@ def calculate_hash(s):  # Added this function
     h.update(s.encode('utf-8'))
     return h.hexdigest()
 
+#T here, 
+#Function that is guaranteed to generate the keys
+def genKeys():
+    #If both files exist, load the public and private keys
+    if os.path.exists("publicKey.pem") and os.path.exists("privateKey.pem"):
+        #Tries to load the keys, but if something goes wrong, generate new keys and save them
+        try:
+            print("Loading asymmetric keys...")
+            privateKey = AE.loadPrivateKey("publicKey.pem")
+            publicKey = AE.loadPublicKey("privateKey.pem")
+            print("Keys loaded")
+        #Catches any issue with key loading
+        except:
+            print("Key loading failed, generating new assymetric keys...")
+            #Generates the pubic and private keys
+            publicKey, privateKey = AE.generateKey(4096)
+            AE.savePrivateKey(privateKey, "publicKey.pem")
+            AE.savePublicKey(publicKey, "privateKey.pem")
+            print("Keys generated")
+    #Else, the files do not exist, so generate a new set of keys
+    else:
+        #Generates the pubic and private keys
+        print("Generating new assymetric keys...")
+        publicKey, privateKey = AE.generateKey(4096)
+        #Save the new keys
+        AE.savePrivateKey(privateKey, "publicKey.pem")
+        AE.savePublicKey(publicKey, "privateKey.pem")
+        print("Keys generated")
+    
+    #If the symmetric key file exists, load the key
+    if os.path.exists("symmetricKey.pem"):
+        #Tries to load the symmetric key, but if something goes wrong, generate a new key and save it
+        try:
+            print("Loading symmetric key...")
+            privateKey = SE.loadKey("symmetricKey.pem")
+            print("Key loaded")
+        #Catches any issue with key loading
+        except:
+            print("Key loading failed, generating new symmetric key...")
+            #Generates the pubic and private keys
+            symmetricKey = SE.generateAES256Key()
+            #Saves the new key
+            SE.saveKey(symmetricKey, "symmetricKey.pem")
+            print("Key generated")
+    #Else, the files do not exist, so generate a new set of keys
+    else:
+        #Generates the symmetric key
+        print("Generating new symmetric key...")
+        symmetricKey = SE.generateAES256Key()
+        SE.saveKey(symmetricKey, "symmetricKey.pem")
+        print("Key generated")
+
+    return publicKey, privateKey, symmetricKey
+
 def main():
     # Create genesis block and admin account block
     genesis_block = generate_genesis_block()
@@ -523,6 +618,15 @@ def main():
         run_client()
         
 def run_server(server):
+    #T here, 
+    #Generates the keys
+    #publicKey, privateKey, symmetricKey = genKeys()
+    #To encrypt:
+    #encryptedMessage = rsa.encrypt(message, publicKey)
+    #To decrypt:
+    #decryptedMessage = rsa.decrypt(encryptedMessage, privateKey).decode()
+
+
     # Handle candidate blocks in a separate thread
     candidate_thread = threading.Thread(target=lambda: candidate_blocks.append(None) if candidate_blocks else None)
     candidate_thread.start()
@@ -539,3 +643,16 @@ def run_server(server):
 
 if __name__ == "__main__":
     main()
+
+
+
+#
+#T here,
+#Need a way to get the keys from the client and the server
+#So, when the client connects, the server should validate the client, then send the symmetric key
+#Would require a new condition in the main server while loop that when a client connects, the client is validated and gets the key
+#Would also require a corresponding section of code in the client so the client requests the key when first joining the blockchain
+#Might need to happen in client.py or server.py under autotcp
+#Also, might need to convert the formatting potentially from base 64 to utf-8
+#If decoding is needed, just send the encrypted data over the wire and then decrypt it from utf-8
+#
