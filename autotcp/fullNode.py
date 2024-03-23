@@ -16,14 +16,17 @@ import ipaddress
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #new socket object
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
-connectport = 11112
+connectport = 11116
 givenport = 12222
+
+def myIP():
+    return (ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr'])
 
 def listenforRequests(): #server method, connectport
 
     # listen for incoming connections
     server.listen(0)
-    server_ip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr']
+    server_ip = myIP()
     print(f"I am server. Listening on {server_ip}:{connectport}")
 
 def requestConnection(neighbor_ip, neighbor_port): #client method
@@ -31,14 +34,12 @@ def requestConnection(neighbor_ip, neighbor_port): #client method
     server_port = neighbor_port
     try:
         client.connect((server_ip, server_port)) #client requests to connect to server
-        myip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr']
+        myip = myIP()
         message = f"be my neighbor? answer on {myip}, port: {givenport}"
-        client.send(message.encode("utf-8")[:1024])
+        sendneighborData(message)
 
         # receive message from the server
-        response = client.recv(1024)
-        response = response.decode("utf-8")
-        print(f"I am client. Received: {response}")
+        response = receiveneighborData(client)
         return ("connected")
 
     except socket.error:
@@ -52,14 +53,16 @@ def acceptConnection(): #server method
 
 
 def closeclientConnection(client_socket): #server method
-    time.sleep(0.5)
-    client_socket.send("closed".encode("utf-8"))
+    time.sleep(0.5) #without the client sees "acceptedclosed"
+    sendclientData(client_socket, "closed")
+    #time.sleep(0.5)
     client_socket.close()
     print("I am server. Connection to client closed")
     # close server socket
     #server.close()
 
 def closeserverConnection(client): #client method
+    #time.sleep(0.5)
     client.send("client closing".encode("utf-8"))
     client.close()
     print("I am client. Connection to server closed")
@@ -78,7 +81,9 @@ def receiveclientData(client_socket): #server method
 
     return request
 
-def receiveneighborData(client): #client method
+
+
+def receiveneigborData(client): #client method
 
     response = client.recv(1024)
     response = response.decode("utf-8")
@@ -89,6 +94,13 @@ def receiveneighborData(client): #client method
         closeserverConnection(client)
 
     return response
+
+def sendneighborData(data): #client method, buffer size 1024 may need to increase to accomodate blockchain message
+    client.send(data.encode("utf-8")[:1024])
+
+def sendclientData(client_socket, data): #server method, buffer size 1024 may need to increase to accomodate blockchain message
+   
+    client_socket.send(data.encode("utf-8")[:1024])
 
 def extractIP(message): #server method
     ip_split = message.split("on ")
@@ -103,9 +115,9 @@ def extractIP(message): #server method
 
     return client_ip, client_port
 
-def bindasServer(): 
-    myip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr'] # I am the server
-    port = 11112 #connectport
+def bindasServer(port): 
+    myip = myIP() # I am the server
+    #port = 11113 #connectport
 
     # bind the socket to a specific address and port
     server.bind((myip, port)) # I am the server
@@ -113,7 +125,7 @@ def bindasServer():
 
 def server_program():
     # create a socket object
-    bindasServer()
+    bindasServer(connectport)
 
     listenforRequests()
 
@@ -123,6 +135,12 @@ def server_program():
     message = receiveclientData(client_socket)
 
     client_ip, client_port = extractIP(message)
+
+    message1 = "middlemessage"
+    sendclientData(client_socket, message1)
+
+    time.sleep(0.5)
+
 
     closeclientConnection(client_socket)
 
@@ -142,10 +160,10 @@ def server_program():
 
 
 def client_program():#neighbor_ip):
-    neighbor_ip = "146.229.163.144"  # replace with the neighbor's(server's) IP address
-    connect_port = 11112 #neighbor's (server's) port
+    neighbor_ip = "146.229.163.145"  # replace with the neighbor's(server's) IP address
+    #connect_port = 11113 #neighbor's (server's) port
 
-    if (requestConnection(neighbor_ip, connect_port) == "connected"):
+    if (requestConnection(neighbor_ip, connectport) == "connected"):
         print ("neighbor/server accepted my client connection. hooray!")
     else:
         print("I am client. My request to connect to a neighbor failed.")
@@ -157,7 +175,7 @@ def client_program():#neighbor_ip):
 
     
 def main():
-    client_program()
+    server_program()
 
 if __name__ == "__main__":
     main()
