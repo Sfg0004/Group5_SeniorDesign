@@ -14,59 +14,96 @@ import shlex
 from subprocess import Popen, PIPE, STDOUT
 import ipaddress
 
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #new socket object
+connectport = 11112
 
-def server_program():
-    # create a socket object
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+def listenforRequests(): #connectport
 
-    server_ip = "146.229.163.147"
-    port = 11112
-
-    # bind the socket to a specific address and port
-    server.bind((server_ip, port))
     # listen for incoming connections
     server.listen(0)
-    print(f"Listening on {server_ip}:{port}")
+    server_ip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr']
+    print(f"Listening on {server_ip}:{connectport}")
 
-    # accept incoming connections
+def requestConnection():
+    print("empty")
+
+
+def acceptConnection():
     client_socket, client_address = server.accept()
     print(f"Accepted connection from {client_address[0]}:{client_address[1]}")
+    return client_socket
 
-    # receive data from the client
-    while True:
-        request = client_socket.recv(1024)
-        request = request.decode("utf-8") # convert bytes to string
-        ip_split = request.split("on ")
-        temp = ip_split[1]
-        temp2 = temp.partition(",")
-        port_split = request.split("port: ")
-        
-        client_ip = temp2[0]
-        client_port = port_split[1]
-        
-        #close connectport connection and start new sustained connection
-        
-        print(f"ip_split: {temp2[0]}")
-        print(f"port_split: {port_split[1]}")
-        # if we receive "close" from the client, then we break
-        # out of the loop and close the conneciton
-        if request.lower() == "close":
-            # send response to the client which acknowledges that the
-            # connection should be closed and break out of the loop
-            client_socket.send("closed".encode("utf-8"))
-            break
 
-        print(f"Received: {request}")
-
-        response = "accepted".encode("utf-8") # convert string to bytes
-        # convert and send accept response to the client
-        client_socket.send(response)
-
-    # close connection socket with the client
+def closeConnection(client_socket):
+    time.sleep(0.5)
+    client_socket.send("closed".encode("utf-8"))
     client_socket.close()
     print("Connection to client closed")
     # close server socket
-    server.close()
+    #server.close()
+
+
+def receiveData(client_socket):
+    request = client_socket.recv(1024)
+    request = request.decode("utf-8") # convert bytes to string
+    print(f"Received: {request}")
+
+    response = "accepted".encode("utf-8") # convert string to bytes
+        # convert and send accept response to the client
+    client_socket.send(response)
+
+    return request
+
+def extractIP(message):
+    ip_split = message.split("on ")
+    temp = ip_split[1]
+    temp2 = temp.partition(",")
+    port_split = message.split("port: ")
+    
+    client_ip = temp2[0]
+    client_port = port_split[1]
+    print(f"ip_split: {client_ip}")
+    print(f"port_split: {client_port}")
+
+    return client_ip, client_port
+
+def bindasServer():
+    myip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr'] # I am the server
+    port = 11112 #connectport
+
+    # bind the socket to a specific address and port
+    server.bind((myip, port)) # I am the server
+
+
+def server_program():
+    # create a socket object
+    bindasServer()
+
+    listenforRequests()
+
+    # accept incoming connections
+    client_socket = acceptConnection()
+
+    message = receiveData(client_socket)
+
+    client_ip, client_port = extractIP(message)
+
+    closeConnection(client_socket)
+
+    #create new sustained connection
+
+
+    # receive data from the client
+    # while True:
+    #     receiveData(client_socket)
+    #     if request.lower() == "close": # if we receive "close" from the client, then we breakout of the loop and close the conneciton
+    #         closeConnection()
+        
+    #     #close connectport connection 
+    #     closeConnection()
+
+    #     #start new sustained connection
+
 
     
 def main():
