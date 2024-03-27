@@ -14,22 +14,39 @@ from random import randint
 from datetime import datetime
 from queue import Queue
 import netifaces as ni
-import traceback # for printing error exceptions
+
+class Validator:
+    def __init__(self, balance, account): # account is an Account object!
+        self.address = account.username
+        self.balance = balance
+        self.role = account.role
+        self.fullLegalName = account.fullLegalName
+
+class FileData:
+    def __init__(self, ipfsHash, fileName, authorName, accessList):
+        self.ipfsHash = ipfsHash
+        self.fileName = fileName
+        self.authorName = authorName
+        self.accessList = accessList
+
+class Account:
+    def __init__(self, username, password, role, fullLegalName):
+        self.username = username
+        self.password = password
+        self.role = role
+        self.fullLegalName = fullLegalName
 
 # Block represents each 'item' in the blockchain
 class Block:
-    def __init__(self, index, timestamp, bpm, prev_hash, validator, transaction_type, payload, file_name, role):
+    def __init__(self, index, timestamp, prevHash, validatorName, transactionType, payload):
         self.index = index                          # block's position in the blockchain
         self.timestamp = timestamp                  # when block was created (<year>-<mh>-<dy> <hr>:<mi>:<se>.<millis>)
-        self.bpm = bpm                              # default set to 10 for user-added blocks (0 for genesis)
-        self.prev_hash = prev_hash                  # 64-character hash of previous block (blank for genesis)
-        self.validator = validator                  # address of the author (blank for genesis)
+        self.prevHash = prevHash                    # 64-character hash of previous block (blank for genesis)
+        self.validatorName = validatorName          # address of the validator (blank for genesis)
         self.hash = self.calculate_block_hash()     # hash for the block
-        self.transaction_type = transaction_type    # either "Upload", "Download", "Create_Account", or "Genesis"
-        self.payload = payload                      # the IPFS hash ("N/A" for genesis)
-        self.file_name = file_name                  # name of uploaded/downloaded file ("no_file" for genesis)
-        self.role = role
-
+        self.transactionType = transactionType      # either "Upload", "Download", "Create_Account", or "Genesis"
+        self.payload = payload                      # ** EITHER FILEDATA OR ACCOUNT OBJECT
+        
         # update this depending on how sign-in/authorization works:
         self.approved_IDs = []
 
@@ -42,7 +59,7 @@ class Block:
 
     # calculateBlockHash returns the hash of all block information
     def calculate_block_hash(self):
-        record = str(self.index) + self.timestamp + str(self.bpm) + self.prev_hash
+        record = str(self.index) + self.timestamp + self.prevHash
         return self.calculate_hash(record)
 
 # Blockchain is a series of validated Blocks
@@ -57,8 +74,8 @@ candidate_blocks = []
 candidate_blocks_lock = threading.Lock()
 
 # keep up with all uploaded IPFS hashes and file names
-ipfs_hashes = []
-file_names = []
+ipfsHashes = []
+fileNames = []
 
 # announcements broadcasts winning validator to all nodes
 # hi this is caleb. this list isn't called anywhere but idk the plan for it so
@@ -68,33 +85,74 @@ announcements = []
 validator_lock = threading.Lock()
 
 # validators keeps track of open validators and balances
-validators = {}
+# validators = {}
+validators = []
 
 # generate_genesis_block creates the genesis block
 def generate_genesis_block():
     t = str(datetime.now())
-    genesis_block = Block(0, t, 0, "", "", "Genesis", "N/A", "no_file", "!")
+    genesis_block = Block(0, t, "", "", "Genesis", 0)
     return genesis_block
 
 # generate_block creates a new block using the previous block's hash
-def generate_block(old_block, bpm, address, transaction_type, payload, file_name, role):
+def generate_block(oldBlock, address, transactionType, payload):
     t = str(datetime.now())
-    new_block = Block(old_block.index + 1, t, bpm, old_block.hash, address, transaction_type, payload, file_name, role)
+    new_block = Block(oldBlock.index + 1, t, oldBlock.hash, address, transactionType, payload)
     return new_block
 
 def generate_sample_blocks():
     t = str(datetime.now())
     address = ""
     address = calculate_hash(t)
-    blockchain.append(generate_block(blockchain[-1], 0, address, "Create_Account", "admin", "admin", "a"))
-    blockchain.append(generate_block(blockchain[-1], 0, address, "Upload", "QmRB39JYBwEqfpDJ5czsBpxrBtwXswTB4HUiiyvhS1b7ii", "chest_xray.png", "!"))
-    blockchain.append(generate_block(blockchain[-1], 0, address, "Upload", "QmeUp1ciEQnKo9uXLi1SH3V6Z6YQHtMHRgMbzNLaHt6gJH", "Patient Info.txt", "!"))
-    blockchain.append(generate_block(blockchain[-1], 0, address, "Upload", "QmeuNtvAJT8HMPgzEyuHCnWiMQkpwHBtAEHmzH854TqJXW", "RADRPT 08-13-2023.pdf", "!"))
-    blockchain.append(generate_block(blockchain[-1], 0, address, "Upload", "QmYRJY3Uq8skTrREx7aFkE7Ym7hXA6bk5pqJE9gWrhFB6n", "Project Timeline.pdf", "!"))
+    accessList = []
+    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmRB39JYBwEqfpDJ5czsBpxrBtwXswTB4HUiiyvhS1b7ii", "chest_xray.png", "Genesis", accessList)))
+    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmeUp1ciEQnKo9uXLi1SH3V6Z6YQHtMHRgMbzNLaHt6gJH", "Patient Info.txt", "Genesis", accessList)))
+    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmeuNtvAJT8HMPgzEyuHCnWiMQkpwHBtAEHmzH854TqJXW", "RADRPT 08-13-2023.pdf", "Genesis", accessList)))
+    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmYRJY3Uq8skTrREx7aFkE7Ym7hXA6bk5pqJE9gWrhFB6n", "Project Timeline.pdf", "Genesis", accessList)))
 
-# user input handling for menus (main menu and download)
+# user input handling for admin menu
 # pass the connection and the maximum number listed for choices
-def handle_input(conn, max_num):
+def handleAdminInput(conn):
+    notValid = True     # validity flag to break loop
+    while notValid:
+        try:
+            choice = conn.recv(1024).decode('utf-8').strip()    # take user's input
+            choice = int(choice) - 1                            # try to convert to int; if not int, go to exception
+            if choice >= 0 and choice < 4:                      # make sure choice is in range
+                notValid = False
+            else:                                               # if input is out of range:
+                io_write(conn, "Invalid input. Try again: ")    #   give error message
+        except ValueError:                                      # if input is not an int:
+            if (choice.lower() == "q"):                             #   check to see if it's "q" (specifically for main menu)
+                notValid = False
+                choice = 4                                      #   convert choice to 4
+            else:                                               # if not q:
+                io_write(conn, "Invalid input. Try again: ")    #   give error message
+    return choice
+
+# user input handling for patient and doctor menus
+# pass the connection and the maximum number listed for choices
+def handleGenericInput(conn):
+    notValid = True     # validity flag to break loop
+    while notValid:
+        try:
+            choice = conn.recv(1024).decode('utf-8').strip()    # take user's input
+            choice = int(choice) - 1                            # try to convert to int; if not int, go to exception
+            if choice >= 0 and choice < 2:                # make sure choice is in range
+                notValid = False
+            else:                                               # if input is out of range:
+                io_write(conn, "Invalid input. Try again: ")    #   give error message
+        except ValueError:                                      # if input is not an int:
+            if (choice.lower() == "q"):                         #   check to see if it's "q" (specifically for main menu)
+                notValid = False
+                choice = 2                                      #   convert choice to 4
+            else:                                               # if not q:
+                io_write(conn, "Invalid input. Try again: ")    #   give error message
+    return choice
+
+# user input handling for download menu
+# pass the connection and the maximum number listed for choices
+def handleDownloadInput(conn, max_num):
     notValid = True     # validity flag to break loop
     while notValid:
         try:
@@ -105,41 +163,62 @@ def handle_input(conn, max_num):
             else:                                               # if input is out of range:
                 io_write(conn, "Invalid input. Try again: ")    #   give error message
         except ValueError:                                      # if input is not an int:
-            if (choice.lower() == "q") and (max_num < 4):       #   check to see if it's "q" (specifically for main menu)
+            if (choice.lower() == "q") and (max_num < 5):       #   check to see if it's "q" (specifically for main menu)
                 notValid = False
-                choice = 3                                      #   convert choice to 2
+                choice = 4                                      #   convert choice to 4
             else:                                               # if not q:
                 io_write(conn, "Invalid input. Try again: ")    #   give error message
     return choice
 
 # 
-def user_input(conn):
-    printMenu(conn)
-    io_write(conn, "Input 1, 2, 3, or q to quit: ")
-    
-    choice = handle_input(conn, 3)
-
+def userInput(conn, validator):
     payload = "not_determined"
-    transaction_type = "not_determined"
-    file_name = "not_determined"
-    role = "!"
-    if choice == 0:
-        io_write(conn, "Uploading File...\n")
-        payload, file_name = uploadIpfs(conn)
-        transaction_type = "Upload"
-    elif choice == 1:
-        io_write(conn, "Downloading File...")
-        payload, file_name = retrieveIpfs(conn)
-        transaction_type = "Download"
-    elif choice == 2:
-        io_write(conn, "Creating Account...")
-        payload, file_name, role = createAccount(conn)
-        transaction_type = "Create_Account"
-    elif choice == 3:
-        io_write(conn, "Closing connection...")
-        # print("Closing connection...")
+    transactionType = "not_determined"
 
-    return payload, transaction_type, file_name, role
+    if (validator.role == "a"):   # If validator is an admin: 
+        printAdminMenu(conn)
+        io_write(conn, "Input 1, 2, 3, 4, or q to quit: ")
+        
+        choice = handleAdminInput(conn)
+
+        if choice == 0:
+            io_write(conn, "Uploading File...\n")
+            payload = uploadIpfs(conn, validator.address)
+            transactionType = "Upload"
+        elif choice == 1:
+            io_write(conn, "Downloading File...")
+            payload = retrieveIpfs(conn, validator.address)
+            transactionType = "Download"
+        elif choice == 2:
+            io_write(conn, "Creating Account...")
+            payload = createAccount(conn)
+            transactionType = "Create_Account"
+        elif choice == 3:
+            io_write(conn, "Listing Users...")
+            payload = "User list"
+            transactionType = "List_Users"
+        elif choice == 4:
+            io_write(conn, "Closing connection...")
+    
+    else:
+        printGenericMenu(conn)
+        io_write(conn, "Input 1, 2, or q to quit: ")
+        
+        choice = handleGenericInput(conn)
+
+        payload = "not_determined"
+        if choice == 0:
+            io_write(conn, "Uploading File...\n")
+            payload = uploadIpfs(conn, validator.address)
+            transactionType = "Upload"
+        elif choice == 1:
+            io_write(conn, "Downloading File...")
+            payload = retrieveIpfs(conn, validator.address)
+            transactionType = "Download"
+        elif choice == 2:
+            io_write(conn, "Closing connection...")
+
+    return payload, transactionType
 
 def login(conn):
     validLogin = False
@@ -149,14 +228,16 @@ def login(conn):
         io_write(conn, "Enter password: ")
         password = conn.recv(1024).decode('utf-8').strip()
         for block in blockchain:
-            if block.transaction_type == "Create_Account":
-                if block.payload == username:
-                    if block.file_name == password:
+            if block.transactionType == "Create_Account":
+                if block.payload.username == username:
+                    if block.payload.password == password:
                         validLogin = True
+                        account = block.payload
         if validLogin == False:
             io_write(conn, "Bad login! Try Again.")
+    
     io_write(conn, "Successful login.\n\n")
-    return username
+    return account
 
 def createValidator(conn):
     #Randomly stakes coins to prevent a favored node
@@ -166,17 +247,19 @@ def createValidator(conn):
     address = ""
     address = calculate_hash(t)
 
-    address = login(conn)
+    currentAccount = login(conn)
+    newValidator = Validator(balance, currentAccount)
 
     with validator_lock:
-        validators[address] = balance
-        print(validators)               
+        validators.append(newValidator)
+        for validator in validators:
+            print(f"{validator.address} : {validator.balance}")             
 
-    return address
+    return newValidator
 
     # NEEDS TO BE PARSED (based on role)
 
-def uploadIpfs(conn):
+def uploadIpfs(conn, author):
     io_write(conn, "Input the path of your file: ") #requests file path
     fileName = conn.recv(1024).decode('utf-8')
     command = f"node index.js {fileName[1:-3]} > temp_path.txt"	#runs the command to begin IPFS code and stores into file
@@ -189,40 +272,47 @@ def uploadIpfs(conn):
     
     hash = parsedPath[4]            # cleans up the hash and the file name
     fileName = fileName[:-3]
-    ipfs_hashes.append(hash)        # update the hash and file lists
-    file_names.append(fileName)
+    ipfsHashes.append(hash)        # update the hash and file lists
+    fileNames.append(fileName)
 
-    return hash, fileName
+    accessList = []
+    newFileData = FileData(hash, fileName, author, accessList)
 
-def retrieveIpfs(conn):
+    return newFileData
+
+def retrieveIpfs(conn, author):
     i = 1
     io_write(conn, "\n\nAvailable files:\n")
-    for name in file_names:
+    for name in fileNames:
         io_write(conn, "[" + str(i) + "] " + name + "\n")
         i += 1
     
     io_write(conn, "\n\nInput the number of your desired file: ")
-    choice = handle_input(conn, len(ipfs_hashes))
+    choice = handleDownloadInput(conn, len(ipfsHashes))
 
-    hash = ipfs_hashes[choice]
+    hash = ipfsHashes[choice]
     url = "https://ipfs.moralis.io:2053/ipfs/" + hash + "/uploaded_file"	#does the url to retrieve the file from IPFS
     r = requests.get(url, allow_redirects=True)
-    file_type = r.headers.get("content-type").split("/")[1]
-    file_name = file_names[choice]
-    with open(file_name, "wb") as f:
+    fileType = r.headers.get("content-type").split("/")[1]
+    fileName = fileNames[choice]
+    with open(fileName, "wb") as f:
         f.write(r.content)	#opens the file and adds content
 
-    io_write(conn, "Finished! Your file: " + file_name + "\n")	#Lets user know retrieval was successful
-    return hash, file_name
+    io_write(conn, "Finished! Your file: " + fileName + "\n")	#Lets user know retrieval was successful
+    
+    accessList = []
+    newFileData = FileData(hash, fileName, author, accessList)
+
+    return newFileData
 
 def getFileList():
     for block in blockchain:
         if block.index == 0:
             continue
-        if block.transaction_type == "Upload":
-            ipfs_hashes.append(block.payload)
-            file_names.append(block.file_name)
-    return ipfs_hashes, file_names
+        if block.transactionType == "Upload":
+            ipfsHashes.append(block.payload.ipfsHash)
+            fileNames.append(block.payload.fileName)
+    return ipfsHashes, fileNames
 
 def createAccount(conn):
     io_write(conn, "\n\nEnter username: ")
@@ -232,69 +322,91 @@ def createAccount(conn):
     io_write(conn, "[a] Admin\n")
     io_write(conn, "[d] Doctor\n")
     io_write(conn, "[p] Patient\n\n")
-    io_write(conn, "Input a character to specify the role:")
+    io_write(conn, "Input a character to specify the role: ")
     role = conn.recv(1024).decode('utf-8').strip().lower()
+    io_write(conn, "Enter user's legal name: ")
+    name = conn.recv(1024).decode('utf-8').strip()
     io_write(conn, "Account created!")
-    return username, password, role
 
-def printMenu(conn):
+    newAccount = Account(username, password, role, name)
+    return newAccount
+
+def printAdminMenu(conn):
     io_write(conn, "\n[1] Upload File\n")
     io_write(conn, "[2] Download File\n")
     io_write(conn, "[3] Create Account\n")
+    io_write(conn, "[4] List Users\n")
     io_write(conn, "[q] Quit\n")
+
+def printGenericMenu(conn):
+    io_write(conn, "\n[1] Upload File\n")
+    io_write(conn, "[2] Download File\n")
+    io_write(conn, "[q] Quit\n")
+
+# Make print look better!!!!
+# def printValidators()
 
 def printBlockchain():
     for block in blockchain:
-        print("\nIndex: " + str(block.index))
-        print("Timestamp: " + block.timestamp)
-        print("BPM: " + str(block.bpm))
-        print("Previous Hash: " + block.prev_hash)
-        print("Validator: " + block.validator)
-        print("Hash: " + block.hash)
-        print("Type: " + block.transaction_type)
-        if block.transaction_type != "Create_Account":
-            print("IPFS Hash: " + block.payload)
-            print("File Name: " + block.file_name)
-            print("-----------------------------------------")
+        if block.transactionType == "Genesis":
+            printGenesisBlock()
         else:
-            print("Username: " + block.payload)
-            print("Password: " + block.file_name)
-            print("Role: " + block.role)
-            print("-----------------------------------------")
+            print("\nIndex: " + str(block.index))
+            print("Timestamp: " + block.timestamp)
+            print("Previous Hash: " + block.prevHash)
+            print("Validator: " + block.validatorName)
+            print("Hash: " + block.hash)
+            print("Type: " + block.transactionType)
+            if block.transactionType != "Create_Account":
+                print("IPFS Hash: " + block.payload.ipfsHash)
+                print("File Name: " + block.payload.fileName)
+            else:
+                print("Username: " + block.payload.username)
+                print("Password: " + block.payload.password)
+                print("Role: " + block.payload.role)
+        print("-----------------------------------------")
+
+def printGenesisBlock():
+    block = blockchain[0]
+    print("\nIndex: " + str(block.index))
+    print("Timestamp: " + block.timestamp)
+    print("Type: " + block.transactionType)
 
 # is_block_valid makes sure the block is valid by checking the index
 # and comparing the hash of the previous block
-def is_block_valid(new_block, old_block):
-    if old_block.index + 1 != new_block.index:
+def is_block_valid(newBlock, oldBlock):
+    if oldBlock.index + 1 != newBlock.index:
         return False
 
-    if old_block.hash != new_block.prev_hash:
+    if oldBlock.hash != newBlock.prevHash:
         return False
 
-    if new_block.calculate_block_hash() != new_block.hash:
+    if newBlock.calculate_block_hash() != newBlock.hash:
         return False
 
     return True
 
 def main_client_loop(conn):
     try:
-        address = createValidator(conn)
-        # io_write(conn, f"\nAddress: {address}\nBalance: {validators[address]}")
-        payload, transaction_type, file_name, role = user_input(conn)
+        # address = createValidator(conn)
+        # DEBUGGING STATEMENT: io_write(conn, f"\nAddress: {address}\nBalance: {validators[address]}")
+        validator = createValidator(conn)
+        payload, transactionType = userInput(conn, validator)
+
 
         while True:
             # if user quit:
             if payload == "not_determined":
                 # delete validator from dictionary of validators and close connection
-                del validators[address]
+                # del validators[address]
+                validators.remove(validator)
+                del validator
                 conn.close()
                 return
 
-            # Take in BPM from the client and add it to the blockchain after conducting necessary validation
-            bpm = 10
             with validator_lock:
                 old_last_index = blockchain[-1]
-            new_block = generate_block(old_last_index, bpm, address, transaction_type, payload, file_name, role)
+            new_block = generate_block(old_last_index, validator.address, transactionType, payload)
 
             if is_block_valid(new_block, old_last_index):
                 candidate_blocks.append(new_block)
@@ -302,7 +414,7 @@ def main_client_loop(conn):
             else:
                  io_write(conn, "\nNot a valid input.\n")
 
-            payload, transaction_type, file_name, role = user_input(conn)
+            payload, transactionType = userInput(conn, validator)
 
     except Exception as q:
         #print(f"Connection closed: {q}")
@@ -315,19 +427,22 @@ def getLotteryWinner():
     balance_total = 0
     prev_balance = 0
     chosen_validator = "not_chosen"
+    loop_index = 0
 
     # get the total of all balances and amount of all validators
-    for balance in validators.values():
-        balance_total += balance
+    for validator in validators:
+        balance_total += validator.balance
 
     # get a random number to choose lottery winner
     rand_int = randint(0, balance_total)
 
     # calculate the new balances and choose winner
-    for validator in weighted_validators.keys():
-        balance = weighted_validators[validator]
-        new_balance = balance + prev_balance
-        weighted_validators.update({validator : new_balance})
+    for validator in weighted_validators:
+        # balance = validator.balance
+        new_balance = validator.balance + prev_balance
+        weighted_validators[loop_index].balance = new_balance
+        loop_index += 1
+        # weighted_validators.update({validator : new_balance})
         prev_balance = new_balance
         if new_balance >= rand_int:
             chosen_validator = validator
@@ -343,7 +458,7 @@ def pick_winner():
         time.sleep(0.05) # .05 second refresh
         with validator_lock:    
             if len(validators) > 0:
-                lottery_winner = getLotteryWinner()
+                lottery_winner = getLotteryWinner().address
 
                 # the following block is for checking the accuracy of getLotteryWinner():
                 # if i == 75:
@@ -353,13 +468,13 @@ def pick_winner():
                 #     i += 1
 
                 for block in candidate_blocks:
-                    if block.validator == lottery_winner:
+                    if block.validatorName == lottery_winner:
                         # make sure candidate index isn't duplicated in existing blockchain (avoid forking):
                         indexes = []
                         for approved_block in blockchain:
                             indexes.append(approved_block.index)
                         if block.index in indexes:
-                            new_block = generate_block(blockchain[-1], block.bpm, block.validator, block.transaction_type, block.payload, block.file_name, block.role)
+                            new_block = generate_block(blockchain[-1], block.validatorName, block.transactionType, block.payload)
                             blockchain.append(new_block)
                         else:
                             blockchain.append(block)
@@ -376,16 +491,19 @@ def calculate_hash(s):  # Added this function
     return h.hexdigest()
 
 def main():
-    # Create genesis block
+    # Create genesis block and admin account block
     genesis_block = generate_genesis_block()
     blockchain.append(genesis_block)
+
+    address = ""
+    blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("admin", "admin", "a", "Admin")))
     
     # hi this is caleb. I added this function to test the downloading option.
     # comment this line out to start with a fresh blockchain
-    generate_sample_blocks()
+    # generate_sample_blocks()
 
     # get lists of hashes and file names on start-up
-    ipfs_hashes, file_names = getFileList()
+    ipfsHashes, fileNames = getFileList()
 
     # Start TCP server
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
