@@ -196,6 +196,7 @@ def userInput(conn, validator):
         elif choice == 3:
             io_write(conn, "Listing Users...")
             payload = "User list"
+            getUserList(conn)
             transactionType = "List_Users"
         elif choice == 4:
             io_write(conn, "Closing connection...")
@@ -313,6 +314,21 @@ def getFileList():
             ipfsHashes.append(block.payload.ipfsHash)
             fileNames.append(block.payload.fileName)
     return ipfsHashes, fileNames
+    
+def getUserList(conn):
+    userList = []
+    for block in blockchain:
+        if block.index == 0:
+            continue
+        if block.transactionType == "Create_Account":
+            userList.append(block.payload.username)
+            
+    i = 1
+    io_write(conn, "\n\nCurrent Users:\n")
+    for name in userList:
+        io_write(conn, "[" + str(i) + "] " + name + "\n")
+        i += 1
+    return
 
 def createAccount(conn):
     io_write(conn, "\n\nEnter username: ")
@@ -330,7 +346,7 @@ def createAccount(conn):
 
     newAccount = Account(username, password, role, name)
     return newAccount
-
+    
 def printAdminMenu(conn):
     io_write(conn, "\n[1] Upload File\n")
     io_write(conn, "[2] Download File\n")
@@ -357,9 +373,11 @@ def printBlockchain():
             print("Validator: " + block.validatorName)
             print("Hash: " + block.hash)
             print("Type: " + block.transactionType)
-            if block.transactionType != "Create_Account":
+            if block.transactionType == ("Upload" or "Download"):
                 print("IPFS Hash: " + block.payload.ipfsHash)
                 print("File Name: " + block.payload.fileName)
+            elif block.transactionType == "List_Users":
+                print("Status: Successful")
             else:
                 print("Username: " + block.payload.username)
                 print("Password: " + block.payload.password)
@@ -500,7 +518,7 @@ def main():
     
     # hi this is caleb. I added this function to test the downloading option.
     # comment this line out to start with a fresh blockchain
-    # generate_sample_blocks()
+    generate_sample_blocks()
 
     # get lists of hashes and file names on start-up
     ipfsHashes, fileNames = getFileList()
@@ -509,9 +527,9 @@ def main():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         #this now allows for connections across computers
-        ip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr']
+        ip = ni.ifaddresses('eth0')[ni.AF_INET][0]['addr']
         print("my ip: " + ip + "\n")
-        port = 5555
+        port = 5556
         server.bind((ip, port))
         server.listen()
         print("Server is running.")
