@@ -604,7 +604,7 @@ def main():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         #this now allows for connections across computers
-        ip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr']
+        ip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr']    # change 'enp0s...' to 'eth0'
         print("my ip: " + ip + "\n")
         port = 5555
         server.bind((ip, port))
