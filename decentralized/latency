@@ -426,6 +426,259 @@ def local_refresh_iplist(iplist, ip, mode): #called after node locally added or 
     return iplist
 
 def send_iplist(iplist):
+import hashlib
+import json
+import socket
+import time
+import random
+import threading
+import os
+import requests
+from random import randint
+from datetime import datetime
+from queue import Queue
+import netifaces as ni
+import shlex  
+from subprocess import Popen, PIPE, STDOUT
+import ipaddress
+
+
+# Blockchain is a series of validated Blocks
+blockchain = []
+
+#client ip address array
+nodelist = [] #local list of node objects
+iplist = [] #ips only - for sending & receiving node update between nodes
+
+class nodes:
+     def __init__(self, ip, latency, neighbor): #need port here
+        self.ip = ip
+        self.latency = latency
+        self.neighbor = neighbor
+
+
+# candidate_blocks handles incoming blocks for validation
+candidate_blocks = []
+candidate_blocks_lock = threading.Lock()
+
+
+validator_lock = threading.Lock()
+
+# validators keeps track of open validators and balances
+validators = {}
+
+
+# for deciding neighbors
+def get_simple_cmd_output(cmd, stderr=STDOUT):
+    """
+    Execute a simple external command and get its output.
+    """
+    args = shlex.split(cmd)
+    return Popen(args, stdout=PIPE, stderr=stderr).communicate()[0].decode()
+
+# for deciding neighbors
+def get_ping_time(host):
+    host = host.split(':')[0]
+    cmd = "fping {host} -C 3 -q".format(host=host)
+    res = [float(x) for x in get_simple_cmd_output(cmd).strip().split(':')[-1].split() if x != '-']
+    if len(res) > 0:
+        return sum(res) / len(res)
+    else:
+        return 999999
+
+
+
+# user input handling
+def handle_input(conn, max_num):
+    notValid = True
+    while notValid:
+        try:
+            choice = int(conn.recv(1024).decode('utf-8').strip()) - 1
+            if choice >= 0 and choice < max_num:
+                notValid = False
+            else:   #if input is out of range:
+                io_write(conn, "Input out of range. Try again: ")
+        except ValueError:  #if input is not an int:
+            io_write(conn, "Invalid input. Try again: ")
+    return choice
+
+
+# pick_winner creates a lottery pool of validators and chooses the validator who gets to forge a block to the blockchain
+def pick_winner():
+    print("\nPicking winner...")
+    while True:
+        time.sleep(10)
+            
+        with validator_lock:    
+            if len(validators) > 0:
+                lottery_winner = max(validators, key=validators.get)
+
+                with candidate_blocks_lock:
+                    global temp_blocks
+                    temp_blocks = list(candidate_blocks)
+                    candidate_blocks.clear()
+
+                for block in temp_blocks:
+                    if block.validator == lottery_winner:
+                        blockchain.append(block)
+                        blockDisplay.append
+
+                        for x in nodes:
+                            io_write(x, "\nwinning validator: " + lottery_winner + "\n")
+                            printBlockchain(x)
+                            io_write(x, "\n")
+                        break
+
+def io_write(conn, message):
+    conn.sendall(message.encode('utf-8'))
+
+def main():
+    # Start TCP server
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        #this now allows for connections across computers
+        ip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr']
+        print("my ip: " + ip + "\n")
+        port = 4329
+        server.bind((ip, port))
+        server.listen()
+        print("Server is running.")
+        run_server(server)
+        
+    except OSError:
+        #If binding fails, assume it's a client
+        print("Failed to bind")
+        
+
+def handle_conn(conn):
+    try:
+
+        print("Connection open")
+    except Exception as q:
+        print(f"Connection closed: {q}")
+        io_write(conn, "Connection closing...\n")
+        conn.close()
+
+def run_server(server):
+    global iplist
+    # Handle candidate blocks in a separate thread
+    candidate_thread = threading.Thread(target=lambda: candidate_blocks.append(None) if candidate_blocks else None)
+    candidate_thread.start()
+
+    # Pick winner thread
+    winner_thread = threading.Thread(target=pick_winner)
+    winner_thread.start()
+
+    while True:
+        conn, addr = server.accept()
+        threading.Thread(target=handle_conn, args=(conn,)).start()
+        tup = addr
+        ip = tup[0]
+        iplist.append(ip)
+        send_iplist(iplist)
+        addnode(ip)
+
+def addnode(ip): #local
+
+    req = "{}:4444".format(ip)  # print("req: " + req) troubleshooting
+    latsum = 0
+    for i in range(3):
+        latsum += (get_ping_time(req))
+    latency = latsum/3 #avg 3 times
+    nodelist.append(nodes(ip,latency, False))
+    for x in nodelist:
+        print(x.ip,"{:.3f}".format(x.latency), x.neighbor)
+    local_refresh_iplist(iplist, ip, "add")
+        
+def deletenode(ip): #local
+    for x in nodelist:
+        if (node.ip == ip):
+            nodelist.remove(x)
+            del x
+    local_refresh_iplist(iplist, ip, "delete")
+
+def refresh_neighbors(nodelist): #local
+
+    neighborcount = 0
+    for node in nodelist:
+        if (node.neighbor == True):
+            node.neighbor = False
+    lownode = nodelist[0]
+    for i in range(2):
+        if (neighborcount < 2):
+            lowlat = 999 #latency to beat
+            for node in nodelist:
+                if ((node.latency < lowlat) and (not(node.neighbor))):
+                    lowlat = node.latency
+                    lownode = node
+            lownode.neighbor = True
+
+def message_refresh_iplist(locallist, receivedlist): #called after iplist recieved from neighbors
+
+    locallist = order_iplist(locallist) #order inputs
+    receivedlist = order_iplist(receivedlist)
+
+    refreshedlist = []
+
+    for ip in locallist:
+        try:
+            receivedlist.index(ip)
+            refreshedlist.append(ip)
+        except:
+            deletenode(ip)
+
+
+    for jp in receivedlist:
+        try:
+            locallist.index(jp)
+        except:
+            addnode(jp)
+            refreshedlist.append(jp)
+
+    refreshedlist = order_iplist(refreshedlist)
+    print(refreshedlist)
+
+     
+    #priority - checks own ip presence
+    refresh_neighbors(nodelist)
+
+    refreshedlist = order_iplist(refreshedlist)
+    return refreshedlist
+
+def local_refresh_iplist(iplist, ip, mode): #called after node locally added or deleted, called every so often per time period..
+
+    if (mode=="add"):
+        iplist.append(ip)
+
+    elif (mode=="delete"):
+        iplist.remove(ip)
+    #priority - checks own ip presence
+    refresh_neighbors(nodelist)
+
+    iplist = order_iplist(iplist)
+
+def send_iplist(iplist):
+
+    iplist = order_iplist(iplist)
+    print("send ip stub: implement soon")
+    print(iplist)
+    print("end stub")
+
+def order_iplist(iplist):
+
+    sortedips = []
+    sortedips = sorted(iplist, key =lambda j: ''.join(('00'+j.split('.')[i])[-3::] for i in range(4))) #sort ips
+    for ip in range(len(iplist)): #loop to remove duplicates
+        if ip<len(iplist)-1:
+            if(iplist[ip]==iplist[ip+1]):
+                sortedips.remove(iplist[ip])
+    return sortedips
+
+
+
+
+if __name__ == "__main__":
+    main()
 
     iplist = order_iplist(iplist)
     print("send ip stub: implement soon")
