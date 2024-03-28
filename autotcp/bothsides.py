@@ -57,22 +57,13 @@ def requestsustainedConnection(neighbor_ip, neighbor_port): #client method
     server_port = int(neighbor_port)
     try:
         print(f"Trying to connect to: {server_ip}:{server_port}")
-        time.sleep(1)
         needy.connect((server_ip, server_port)) #client requests to connect to server
-        print("A")
-        myip = myIP()
         #message = "beginning sustained connection. love, neighbor"
         #sendneighborData(message)
-        print("B")
         
-
-        # receive message from the server
         #response = receiveneighborData(needy)
-        print("C")
         #return neighbor_ip, neighbor_port #throwaway
     except Exception as e: print(e)
-
-
 
 def acceptclientConnection(): #server method
     client_socket, client_address = server.accept()
@@ -96,19 +87,13 @@ def approveConnection(client_socket): #server method
 def closeclientConnection(client_socket): #server method
     time.sleep(0.5) #without the client sees "acceptedclosed"
     sendclientsocketData(client_socket, "closed")
-    #time.sleep(0.5)
     client_socket.close()
     print("I am server. Connection to client closed")
-    # close server socket
-    #server.close()
 
 def closeserverConnection(client): #client method
-    #time.sleep(0.5)
     client.send("client closing".encode("utf-8"))
     client.close()
     print("I am client. Connection to server closed")
-    # close server socket
-    #server.close()
 
 
 def receiveclientData(client_socket): #server method
@@ -154,9 +139,6 @@ def extractIP(message): #server method
 
 def bindasServer(port): 
     myip = myIP() # I am the server
-    #port = 11113 #connectport
-
-    # bind the socket to a specific address and port
     server.bind((myip, port)) # I am the server
 
 
@@ -189,23 +171,11 @@ def server_program():
     print(f"receiveport is: {receiveport}")
 
     samaritan.listen(0)
-    print("here")
     neighbor_socket1 = acceptConnection()
-    print("there")
-  #  #wait for client to request new connection
-
-   # # if (requestsustainedConnection(client_ip, client_port) == "connected"):
-   # #     print ("sustained connection successful. hooray!")
-   # # else:
-   # #     print("I am client. My request for sustained connection failed.")
-   # message = receiveclientData(neighbor_socket1)
-   # print(message)
 
     time.sleep(0.5)
     message2 = "samaritan to neighbor, over"
     sendclientsocketData(neighbor_socket1, message2)
-
-    #time.sleep(0.5)
 
     message3 = "samaritan to neighbor, send your blockchain or ask for mine"
     sendclientsocketData(neighbor_socket1, message3)
@@ -216,21 +186,6 @@ def server_program():
     print("I am samaritan. Stopping my good works.")
 
     closeclientConnection(neighbor_socket1) #close my given port (my side sustained connection as their neighbor)
-
-
-    #create new sustained connection
-
-
-    # receive data from the client
-    # while True:
-    #     receiveData(client_socket)
-    #     if request.lower() == "close": # if we receive "close" from the client, then we breakout of the loop and close the conneciton
-    #         closeConnection()
-        
-    #     #close connectport connection 
-    #     closeConnection()
-
-    #     #start new sustained connection
 
 
 def client_program():#neighbor_ip):
@@ -244,14 +199,9 @@ def client_program():#neighbor_ip):
         print("I am client. My request to connect to a neighbor failed.")
 
     message = receiveneighborData(client)
-    #print(message)
 
     message = receiveneighborData(client)
-    #print(message)
 
-    ##closeserverConnection(client)
-
-   ##neighbor_ip, neighbor_port = extractIP(message)
     try:
         print(f"samaritan receiveport is: {neighbor_port}")
         time.sleep(0.2)
@@ -263,18 +213,12 @@ def client_program():#neighbor_ip):
     message = receiveneighborData(needy)
     
     message = receiveneighborData(needy)
-    # print(message)
-
-   ##sendneighborData("thanks for being my neighbor")
 
     
 def main():
     server_program()
     
     
-
-
-
 
 
 
