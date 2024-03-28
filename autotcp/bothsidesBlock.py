@@ -22,8 +22,8 @@ samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 neighbor_socket1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 needy = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 neighbor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-connectport = 11164
-givenport = 12254
+connectport = 11170
+givenport = 12260
 
 class Account:
     def __init__(self, username, password, role, fullLegalName):
@@ -74,10 +74,12 @@ def generate_block(oldBlock, address, transactionType, payload):
     new_block = Block(oldBlock.index + 1, t, oldBlock.hash, address, transactionType, payload)
     return new_block
 
-def printBlockchain():
+def assembleBlockchain():
     for block in blockchain:
         if block.transactionType == "Genesis":
-            printGenesisBlock()
+            print("Genesis would go here")
+            genesis = printGenesisBlock()
+            
         else:
             # sendclientsocketData(neighbor_socket1, "\nIndex: " + str(block.index))
             # sendclientsocketData(neighbor_socket1, "Timestamp: " + block.timestamp)
@@ -95,8 +97,10 @@ def printBlockchain():
                 
                 hash = "IPFS Hash: " + block.payload.ipfsHash
                 filename = "File Name: " + block.payload.fileName
-                message = hash + fileName
-                sendclientsocketData(neighbor_socket1, message)
+                message = genesis + hash + fileName
+                print(message)
+                return message
+                #sendclientsocketData(neighbor_socket1, message)
 
 
                 # sendclientsocketData(neighbor_socket1, "IPFS Hash: " + block.payload.ipfsHash)
@@ -104,19 +108,28 @@ def printBlockchain():
                 #print("IPFS Hash: " + block.payload.ipfsHash)
                 #print("File Name: " + block.payload.fileName)
             else:
-                sendclientsocketData(neighbor_socket1, "Username: " + block.payload.username)
+                print("bruh")
+                username = "Username: " + block.payload.username
+                password = "Password: " + block.payload.password
+                role = "Role: " + block.payload.role
+                dashes = "-----------------------------------------"
+                message = "\n" + dashes + "\n" + genesis + "\n" + username + "\n" + password + "\n" + role + "\n" + dashes
+                return message
+                #sendclientsocketData(neighbor_socket1, "Username: " + block.payload.username)
                 # sendclientsocketData(neighbor_socket1, "Password: " + block.payload.password)
                 # sendclientsocketData(neighbor_socket1, "Role: " + block.payload.role)
-        sendclientsocketData(neighbor_socket1, "-----------------------------------------")
+        #sendclientsocketData(neighbor_socket1, "-----------------------------------------")
         #print("-----------------------------------------")
 
 def printGenesisBlock():
     block = blockchain[0]
-    index = "\nIndex: " + str(block.index)
+    index = "Index: " + str(block.index)
     time = "Timestamp: " + block.timestamp
     type = "Type: " + block.transactionType
-    genesis = index + time + type
-    sendclientsocketData(neighbor_socket1, genesis)
+    dashes = "-----------------------------------------"
+    genesis = index + "\n" + time + "\n"+ type + "\n" + dashes
+    return genesis
+    #sendclientsocketData(neighbor_socket1, genesis)
     # sendclientsocketData(neighbor_socket1, "\nIndex: " + str(block.index))
     # sendclientsocketData(neighbor_socket1, "Timestamp: " + block.timestamp)
     # sendclientsocketData(neighbor_socket1, "Type: " + block.transactionType)
@@ -314,7 +327,7 @@ def server_program():
     message = receiveclientData(neighbor_socket1)
     print(message)
 
-    sendBlockchain = printBlockchain()
+    sendBlockchain = str(assembleBlockchain())
     sendclientsocketData(neighbor_socket1, sendBlockchain)
 
     print("I am samaritan. Stopping my good works.")
@@ -369,9 +382,6 @@ def client_program():#neighbor_ip):
     needyMessage = "Send me your blockchain please."
     sendneighborData(needyMessage)
 
-    message = receiveneighborData(needy)
-    message = receiveneighborData(needy)
-    message = receiveneighborData(needy)
     message = receiveneighborData(needy)
     message = receiveneighborData(needy)
     # print(message)
