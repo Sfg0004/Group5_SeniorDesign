@@ -170,6 +170,25 @@ def handleDownloadInput(conn, max_num):
                 io_write(conn, "Invalid input. Try again: ")    #   give error message
     return choice
 
+def handleLoginInput(conn):
+    notValid = True     # validity flag to break loop
+    while notValid:
+        try:
+            choice = conn.recv(1024).decode('utf-8').strip()    # take user's input
+            choice = int(choice) - 1                            # try to convert to int; if not int, go to exception
+            if choice >= 0 and choice < 1:                # make sure choice is in range
+                notValid = False
+            else:                                               # if input is out of range:
+                io_write(conn, "Invalid input. Try again: ")    #   give error message
+        except ValueError:                                      # if input is not an int:
+            if (choice.lower() == "q"):                         #   check to see if it's "q" (specifically for main menu)
+                notValid = False
+                choice = 1                                      #   convert choice to 4
+            else:                                               # if not q:
+                io_write(conn, "Invalid input. Try again: ")    #   give error message
+    return choice
+
+
 # 
 def userInput(conn, validator):
     payload = "not_determined"
@@ -200,7 +219,20 @@ def userInput(conn, validator):
             transactionType = "List_Users"
         elif choice == 4:
             io_write(conn, "Closing connection...")
-    
+    elif (validator.address == '') and (validator.balance == '') and (validator.role =='') and (validator.fullLegalName == ''):
+        printLoginMenu(conn)
+        io_write(conn, "Input 1 to Login or q to quit: ")
+        
+        choice = handleLoginInput(conn)
+
+        payload = "not_determined" 
+        if choice == 0:
+            io_write(conn, "Log In: ")
+            payload = ""
+            transactionType = "Log_In"
+        elif choice == 1:
+            transaction_type = "not_determined"
+            io_write(conn, "Closing connection...") 
     else:
         printGenericMenu(conn)
         io_write(conn, "Input 1, 2, or q to quit: ")
@@ -221,35 +253,46 @@ def userInput(conn, validator):
 
     return payload, transactionType
 
+
 def login(conn):
     validLogin = False
+    loggingIn = False
+    nullAccount = Account("","","","")
+	
     while validLogin != True:
-        io_write(conn, "\n\nEnter username: ")
-        username = conn.recv(1024).decode('utf-8').strip()
-        io_write(conn, "Enter password: ")
-        password = conn.recv(1024).decode('utf-8').strip()
-        for block in blockchain:
-            if block.transactionType == "Create_Account":
-                if block.payload.username == username:
-                    if block.payload.password == password:
-                        validLogin = True
-                        account = block.payload
-        if validLogin == False:
-            io_write(conn, "Bad login! Try Again.")
+        payload, loggingIn = userInput(conn, Validator("", nullAccount)) #should return transaction type as loggingIn (ie "Log_In" or "not_determined")
+        if loggingIn == "not_determined":
+            return nullAccount, loggingIn
+            break
+        elif loggingIn == "Log_In":
+            io_write(conn, "\n\nEnter username: ")
+            username = conn.recv(1024).decode('utf-8').strip()
+            io_write(conn, "Enter password: ")
+            password = conn.recv(1024).decode('utf-8').strip()
+            for block in blockchain:
+                if block.transactionType == "Create_Account":
+                    if block.payload.username == username:
+                        if block.payload.password == password:
+                            validLogin = True
+                            account = block.payload
+                            io_write(conn, "Successful login.\n\n")
+                            return account, loggingIn
+            if validLogin == False:
+                io_write(conn, "Bad login! Try Again.")
     
-    io_write(conn, "Successful login.\n\n")
-    return account
 
-def createValidator(conn):
+
+def createValidator(conn, accountObj):
     #Randomly stakes coins to prevent a favored node
     balance = randint(1,100)
 
+	# do we need these 3 lines?
     t = str(datetime.now())
     address = ""
     address = calculate_hash(t)
 
-    currentAccount = login(conn)
-    newValidator = Validator(balance, currentAccount)
+    #currentAccount, transactionType = login(conn)
+    newValidator = Validator(balance, accountObj)
 
     with validator_lock:
         validators.append(newValidator)
@@ -358,6 +401,10 @@ def printGenericMenu(conn):
     io_write(conn, "\n[1] Upload File\n")
     io_write(conn, "[2] Download File\n")
     io_write(conn, "[q] Quit\n")
+    
+def printLoginMenu(conn):
+    io_write(conn, "\n[1] Login\n")
+    io_write(conn, "[q] Quit\n")
 
 # Make print look better!!!!
 # def printValidators()
@@ -408,8 +455,11 @@ def main_client_loop(conn):
     try:
         # address = createValidator(conn)
         # DEBUGGING STATEMENT: io_write(conn, f"\nAddress: {address}\nBalance: {validators[address]}")
-        validator = createValidator(conn)
-        payload, transactionType = userInput(conn, validator)
+        account, payload = login(conn)
+        validator = createValidator(conn, account) 
+        if payload != "not_determined":
+            payload, transactionType = userInput(conn, validator)
+
 
 
         while True:
@@ -529,7 +579,7 @@ def main():
         #this now allows for connections across computers
         ip = ni.ifaddresses('eth0')[ni.AF_INET][0]['addr']
         print("my ip: " + ip + "\n")
-        port = 5556
+        port = 5555
         server.bind((ip, port))
         server.listen()
         print("Server is running.")
