@@ -1,3 +1,5 @@
+#Change eth interface name if necessary in myIP()
+
 import hashlib
 import json
 import socket
@@ -20,8 +22,8 @@ samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 neighbor_socket1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 needy = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 neighbor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-connectport = 11162
-givenport = 12252
+connectport = 11164
+givenport = 12254
 
 class Account:
     def __init__(self, username, password, role, fullLegalName):
@@ -77,26 +79,50 @@ def printBlockchain():
         if block.transactionType == "Genesis":
             printGenesisBlock()
         else:
-            print("\nIndex: " + str(block.index))
-            print("Timestamp: " + block.timestamp)
-            print("Previous Hash: " + block.prevHash)
-            print("Validator: " + block.validatorName)
-            print("Hash: " + block.hash)
-            print("Type: " + block.transactionType)
+            # sendclientsocketData(neighbor_socket1, "\nIndex: " + str(block.index))
+            # sendclientsocketData(neighbor_socket1, "Timestamp: " + block.timestamp)
+            # sendclientsocketData(neighbor_socket1, "Previous Hash: " + block.prevHash)
+            # sendclientsocketData(neighbor_socket1, "Validator: " + block.validatorName)
+            # sendclientsocketData(neighbor_socket1, "Hash: " + block.hash)
+            # sendclientsocketData(neighbor_socket1, "Type: " + block.transactionType)
+            # print("\nIndex: " + str(block.index))
+            # print("Timestamp: " + block.timestamp)
+            # print("Previous Hash: " + block.prevHash)
+            # print("Validator: " + block.validatorName)
+            # print("Hash: " + block.hash)
+            # print("Type: " + block.transactionType)
             if block.transactionType != "Create_Account":
-                print("IPFS Hash: " + block.payload.ipfsHash)
-                print("File Name: " + block.payload.fileName)
+                
+                hash = "IPFS Hash: " + block.payload.ipfsHash
+                filename = "File Name: " + block.payload.fileName
+                message = hash + fileName
+                sendclientsocketData(neighbor_socket1, message)
+
+
+                # sendclientsocketData(neighbor_socket1, "IPFS Hash: " + block.payload.ipfsHash)
+                # sendclientsocketData(neighbor_socket1, "File Name: " + block.payload.fileName)
+                #print("IPFS Hash: " + block.payload.ipfsHash)
+                #print("File Name: " + block.payload.fileName)
             else:
-                print("Username: " + block.payload.username)
-                print("Password: " + block.payload.password)
-                print("Role: " + block.payload.role)
-        print("-----------------------------------------")
+                sendclientsocketData(neighbor_socket1, "Username: " + block.payload.username)
+                # sendclientsocketData(neighbor_socket1, "Password: " + block.payload.password)
+                # sendclientsocketData(neighbor_socket1, "Role: " + block.payload.role)
+        sendclientsocketData(neighbor_socket1, "-----------------------------------------")
+        #print("-----------------------------------------")
 
 def printGenesisBlock():
     block = blockchain[0]
-    print("\nIndex: " + str(block.index))
-    print("Timestamp: " + block.timestamp)
-    print("Type: " + block.transactionType)        
+    index = "\nIndex: " + str(block.index)
+    time = "Timestamp: " + block.timestamp
+    type = "Type: " + block.transactionType
+    genesis = index + time + type
+    sendclientsocketData(neighbor_socket1, genesis)
+    # sendclientsocketData(neighbor_socket1, "\nIndex: " + str(block.index))
+    # sendclientsocketData(neighbor_socket1, "Timestamp: " + block.timestamp)
+    # sendclientsocketData(neighbor_socket1, "Type: " + block.transactionType)
+    #print("\nIndex: " + str(block.index))
+    #print("Timestamp: " + block.timestamp)
+    #print("Type: " + block.transactionType)        
 
 def myIP():
     return (ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr'])
@@ -289,7 +315,7 @@ def server_program():
     print(message)
 
     sendBlockchain = printBlockchain()
-    sendclientsocketData(sendBlockchain)
+    sendclientsocketData(neighbor_socket1, sendBlockchain)
 
     print("I am samaritan. Stopping my good works.")
 
@@ -343,6 +369,10 @@ def client_program():#neighbor_ip):
     needyMessage = "Send me your blockchain please."
     sendneighborData(needyMessage)
 
+    message = receiveneighborData(needy)
+    message = receiveneighborData(needy)
+    message = receiveneighborData(needy)
+    message = receiveneighborData(needy)
     message = receiveneighborData(needy)
     # print(message)
 
