@@ -196,7 +196,7 @@ def userInput(conn, validator):
 
     if (validator.role == "a"):   # If validator is an admin: 
         printAdminMenu(conn)
-        io_write(conn, "Input 1, 2, 3, 4, or q to quit: ")
+        io_write(conn, "Input 1, 2, 3, 4, or q to log out: ")
         
         choice = handleAdminInput(conn)
 
@@ -218,7 +218,10 @@ def userInput(conn, validator):
             getUserList(conn)
             transactionType = "List_Users"
         elif choice == 4:
-            io_write(conn, "Closing connection...")
+            io_write(conn, "Logging Out...")
+            payload = validator # might need to be validator for log out block??
+            transactionType = "Log_Out"
+    
     elif (validator.address == '') and (validator.balance == '') and (validator.role =='') and (validator.fullLegalName == ''):
         printLoginMenu(conn)
         io_write(conn, "Input 1 to Login or q to quit: ")
@@ -235,7 +238,7 @@ def userInput(conn, validator):
             io_write(conn, "Closing connection...") 
     else:
         printGenericMenu(conn)
-        io_write(conn, "Input 1, 2, or q to quit: ")
+        io_write(conn, "Input 1, 2, or q to log out: ")
         
         choice = handleGenericInput(conn)
 
@@ -249,7 +252,9 @@ def userInput(conn, validator):
             payload = retrieveIpfs(conn, validator.address)
             transactionType = "Download"
         elif choice == 2:
-            io_write(conn, "Closing connection...")
+            io_write(conn, "Logging Out...")
+            payload = validator
+            transactionType = "Log_Out"
 
     return payload, transactionType
 
@@ -395,12 +400,12 @@ def printAdminMenu(conn):
     io_write(conn, "[2] Download File\n")
     io_write(conn, "[3] Create Account\n")
     io_write(conn, "[4] List Users\n")
-    io_write(conn, "[q] Quit\n")
+    io_write(conn, "[q] Log Out\n")
 
 def printGenericMenu(conn):
     io_write(conn, "\n[1] Upload File\n")
     io_write(conn, "[2] Download File\n")
-    io_write(conn, "[q] Quit\n")
+    io_write(conn, "[q] Log Out\n")
     
 def printLoginMenu(conn):
     io_write(conn, "\n[1] Login\n")
@@ -424,6 +429,8 @@ def printBlockchain():
                 print("IPFS Hash: " + block.payload.ipfsHash)
                 print("File Name: " + block.payload.fileName)
             elif block.transactionType == "List_Users":
+                print("Status: Successful")
+            elif block.transactionType == "Log_Out":
                 print("Status: Successful")
             else:
                 print("Username: " + block.payload.username)
@@ -455,15 +462,34 @@ def main_client_loop(conn):
     try:
         # address = createValidator(conn)
         # DEBUGGING STATEMENT: io_write(conn, f"\nAddress: {address}\nBalance: {validators[address]}")
-        account, payload = login(conn)
-        validator = createValidator(conn, account) 
-        if payload != "not_determined":
-            payload, transactionType = userInput(conn, validator)
-
-
-
         while True:
-            # if user quit:
+            loggedIn = False
+            account, payload = login(conn)
+            validator = createValidator(conn, account) 
+            if payload == "Log_In":
+                payload, transactionType = userInput(conn, validator)
+                loggedIn = True
+
+
+            while loggedIn == True:
+                # if user quit:
+                if transactionType == "Log_Out":
+                    loggedIn = False
+                    break
+                else:
+                #move this section up before quit and SHOULD add blocks to chain for log in/out function
+                    with validator_lock:
+                        old_last_index = blockchain[-1]
+                    new_block = generate_block(old_last_index, validator.address, transactionType, payload)
+
+                    if is_block_valid(new_block, old_last_index):
+                        candidate_blocks.append(new_block)
+                        
+                    else:
+                         io_write(conn, "\nNot a valid input.\n")
+
+                payload, transactionType = userInput(conn, validator)
+            
             if payload == "not_determined":
                 # delete validator from dictionary of validators and close connection
                 # del validators[address]
@@ -471,18 +497,6 @@ def main_client_loop(conn):
                 del validator
                 conn.close()
                 return
-
-            with validator_lock:
-                old_last_index = blockchain[-1]
-            new_block = generate_block(old_last_index, validator.address, transactionType, payload)
-
-            if is_block_valid(new_block, old_last_index):
-                candidate_blocks.append(new_block)
-                
-            else:
-                 io_write(conn, "\nNot a valid input.\n")
-
-            payload, transactionType = userInput(conn, validator)
 
     except Exception as q:
         #print(f"Connection closed: {q}")
@@ -579,7 +593,7 @@ def main():
         #this now allows for connections across computers
         ip = ni.ifaddresses('eth0')[ni.AF_INET][0]['addr']
         print("my ip: " + ip + "\n")
-        port = 5555
+        port = 5556
         server.bind((ip, port))
         server.listen()
         print("Server is running.")
