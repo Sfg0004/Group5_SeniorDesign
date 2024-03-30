@@ -15,12 +15,12 @@ import netifaces as ni
 import shlex  
 from subprocess import Popen, PIPE, STDOUT
 import ipaddress
+import multiprocessing
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #new socket object
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
-neighbor_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
-needy = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+self_samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 neighbor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 connectport = 11162
 givenport = 12252
@@ -31,10 +31,10 @@ iplist = [] #ips only - for sending & receiving node update between nodes
 
 
 class nodes:
-     def __init__(self, ip, latency, neighbor):
+     def __init__(self, ip, latency, isneighbor):
         self.ip = ip
         self.latency = latency
-        self.neighbor = neighbor
+        self.isneighbor = isneighbor
 
 # for deciding neighbors
 def get_simple_cmd_output(cmd, stderr=STDOUT): #for get_ping_time to use
@@ -63,31 +63,31 @@ def addnode(ip): #local
     latency = latsum/3 #avg 3 times
     nodelist.append(nodes(ip,latency, false))
     for x in nodelist:
-        print(x.ip,"{:.3f}".format(x.latency), x.neighbor)
+        print(x.ip,"{:.3f}".format(x.latency), x.isneighbor)
     local_refresh_iplist(iplist, ip, "add")
         
-def deletenode(ip) #local
-     for x in nodelist:
-        if node.ip == ip
+def deletenode(ip): #local
+    for x in nodelist:
+        if node.ip == ip:
             nodelist.remove(x)
             del x
     local_refresh_iplist(iplist, ip, "delete")
 
-def refresh_neighbors(nodelist) #local
+def refresh_neighbors(nodelist): #local
 
     neighborcount = 0
     for node in nodelist:
-        if (node.neighbor = true):
-            node.neighbor = false
+        if (node.isneighbor == true):
+            node.isneighbor = false
     lownode = nodelist[0]
     for i in range(2):
         if (neighborcount < 2):
             lowlat = 999 #latency to beat
             for node in nodelist:
-                if ((node.latency < lowlat) && (!node.neighbor))
+                if ((node.latency < lowlat) and (not(node.isneighbor))):
                     lowlat = node.latency
                     lownode = node
-            lownode.neighbor = true
+            lownode.isneighbor = true
 
 def message_refresh_iplist(locallist, receivedlist): #called after iplist recieved from neighbors
 
@@ -123,10 +123,10 @@ def message_refresh_iplist(locallist, receivedlist): #called after iplist reciev
 
 def local_refresh_iplist(iplist, ip, mode): #called after node locally added or deleted, called every so often per time period..
 
-    if (mode=="add")
+    if (mode=="add"):
         iplist.append(ip)
 
-    elif (mode=="delete")
+    elif (mode=="delete"):
         iplist.remove(ip)
     #priority - checks own ip presence
     refresh_neighbors(nodelist)
@@ -154,12 +154,11 @@ def order_iplist(iplist):
     return sortedips
 
 
+def request_iplist():
 
-
-
-
-
-
+    senddatafromclient("requesting iplist.")
+    received_iplist = receivedatafromsamaritan(client) #where client is self
+    return received_iplist
 
 
 
@@ -173,18 +172,17 @@ def listenforRequests(): #server method, connectport
     server_ip = myIP()
     print(f"I am server. Listening on {server_ip}:{connectport}")
 
-def requestConnection(neighbor_ip, neighbor_port): #client method
-    server_ip = neighbor_ip
-    server_port = neighbor_port
+def requestConnection(server_ip, server_port): #client method
     try:
         client.connect((server_ip, server_port)) #client requests to connect to server
         myip = myIP()
         message = f"be my neighbor? answer on {myip}, port: {givenport}"
-        sendclientData(message) #client parameter
+        senddatafromclient(message,client) #client parameter
 
         # receive message from the server
-        response = receiveneighborData(client)
+        response = receivedatafromserver(client)
 
+        #neighbor returns their self_samaritan connect data, which I see as my neighbor
         neighbor_ip, neighbor_port = extractIP(response)
 
         return neighbor_ip, neighbor_port
@@ -192,58 +190,73 @@ def requestConnection(neighbor_ip, neighbor_port): #client method
     except socket.error:
         return ("failure")
 
-def requestsustainedConnection(neighbor_ip, neighbor_port): #client method
-    server_ip = neighbor_ip
-    server_port = int(neighbor_port)
+def requestsustainedConnection(samaritan_ip, samaritan_port): #client method
+    samaritan_port = int(samaritan_port)
     try:
-        print(f"Trying to connect to: {server_ip}:{server_port}")
-        needy.connect((server_ip, server_port)) #client requests to connect to server
+        print(f"Trying to connect to: {samaritan_ip}:{samaritan_port}")
+        client.connect((samaritan_ip, samaritan_port)) #client requests to connect to server
         #message = "beginning sustained connection. love, neighbor"
-        #sendneighborData(message)
-        
-        #response = receiveneighborData(needy)
-        #return neighbor_ip, neighbor_port #throwaway
+        #senddatatosamaritan(message)
+        #response = receivedatafromsamaritan(client)
     except Exception as e: print(e)
 
-def acceptclientConnection(): #server method
-    client_socket, client_address = server.accept()
-    print(f"I am server. Accepted connection from {client_address[0]}:{client_address[1]}")
-    return client_socket
+def acceptconnectportConnection(): #server method, only for connectport
+    requester_socket, requester_address = server.accept()
+    print(f"I am server. Accepted connection from {requester_address[0]}:{requester_address[1]}")
+    return requester_socket
 
-def acceptConnection(): #samaritan method
-    neighbor_socket, neighbor_address = samaritan.accept()
-    print(f"I am server/samaritan. Accepted connection from {neighbor_address[0]}:{neighbor_address[1]}")
+def acceptConnection(): #self_samaritan method
+    neighbor_socket, neighbor_address = self_samaritan.accept()
+    print(f"I am self_samaritan. Accepted connection from {neighbor_address[0]}:{neighbor_address[1]}")
     return neighbor_socket
 
-def approveConnection(client_socket): #server method
+def approveConnection(requester_socket): #server method
     global givenport
     myip = myIP()
     response = f"accepted. talk on {myip}, port: {givenport}".encode("utf-8") # convert string to bytes
     givenport = givenport + 1
     #send accept response to the client
-    client_socket.send(response)
+    requester_socket.send(response)
 
-
-def closeclientConnection(client_socket): #server method
+#closeclientconnection
+def closeneighborConnection(neighbor_socket): #samaritan method
     time.sleep(0.5) #without the client sees "acceptedclosed"
-    sendclientsocketData(client_socket, "closed")
-    client_socket.close()
-    print("I am server. Connection to client closed")
+    senddatatoneighbor(neighbor_socket, "closed")
+    neighbor_socket.close()
+    print("I am samaritan. Connection to neighbor closed")
+
+def closerequesterConnection(requester_socket): #server method
+    time.sleep(0.5) #without the client sees "acceptedclosed"
+    senddatatorequester(requester_socket, "closed")
+    requester_socket.close()
+    print("I am server. Connection to requester closed")
 
 def closeserverConnection(client): #client method
     client.send("client closing".encode("utf-8"))
     client.close()
     print("I am client. Connection to server closed")
 
+def closesamaritanConnection(client): #client method
+    client.send("client closing".encode("utf-8"))
+    client.close()
+    print("I am client. Connection to samaritan closed")
 
-def receiveclientData(client_socket): #server method
-    request = client_socket.recv(1024)
+
+def receivedatafromrequester(requester_socket): #server method
+    request = requester_socket.recv(1024)
     request = request.decode("utf-8") # convert bytes to string
     print(f"I am server. Received: {request}")
 
     return request
 
-def receiveneighborData(client): #client method
+def receivedatafromneighbor(neighbor_socket): #server method
+    request = neighbor_socket.recv(1024)
+    request = request.decode("utf-8") # convert bytes to string
+    print(f"I am server. Received: {request}")
+
+    return request
+
+def receivedatafromserver(client): #client method
 
     response = client.recv(1024)
     response = response.decode("utf-8")
@@ -255,14 +268,25 @@ def receiveneighborData(client): #client method
 
     return response
 
-def sendneighborData(data): #client method, buffer size 1024 may need to increase to accomodate blockchain message
-    needy.send(data.encode("utf-8")[:1024])
+def receivedatafromsamaritan(client): #client method
 
-def sendclientData(data): #client method, buffer size 1024 may need to increase to accomodate blockchain message
+    response = client.recv(1024)
+    response = response.decode("utf-8")
+   
+    print(f"I am client. Received: {response}")
+
+    if response.lower() == "closed":
+        closesamaritanConnection(client)
+
+    return response
+
+#sendclientdata
+def senddatafromclient(data, client): #client method, buffer size 1024 may need to increase to accomodate blockchain message
     client.send(data.encode("utf-8")[:1024])
 
-def sendclientsocketData(client_socket, data): #server method, buffer size 1024 may need to increase to accomodate blockchain message
-    client_socket.send(data.encode("utf-8")[:1024])
+#sendclientsocketdata
+def senddatatoneighbor(neighbor_socket, data): #server method, buffer size 1024 may need to increase to accomodate blockchain message
+    neighbor_socket.send(data.encode("utf-8")[:1024])
 
 def extractIP(message): #server method
     ip_split = message.split("on ")
@@ -282,117 +306,67 @@ def bindasServer(port):
     server.bind((myip, port)) # I am the server
 
 
-def server_program():
-    global givenport
-    # create a socket object
-    bindasServer(connectport)
-
-    listenforRequests()
-
-    # accept incoming connections
-    client_socket = acceptclientConnection()
-
-    receiveport = givenport
-    message = receiveclientData(client_socket)
-    #client_ip, client_port = extractIP(message) not used
-
-    approveConnection(client_socket)
-
-    message1 = "final connectport test, about to close"
-    sendclientsocketData(client_socket, message1)
-
-    time.sleep(0.1)
-
-    closeclientConnection(client_socket)
-
-
-    myip = myIP()
-    samaritan.bind((myip, receiveport)) 
-    print(f"receiveport is: {receiveport}")
-
-    samaritan.listen(0)
-    neighbor_socket1 = acceptConnection()
-
-    time.sleep(0.5)
-    message2 = "samaritan to neighbor, over"
-    sendclientsocketData(neighbor_socket1, message2)
-
-    message3 = "samaritan to neighbor, send your blockchain or ask for mine"
-    sendclientsocketData(neighbor_socket1, message3)
-
-    message = receiveclientData(neighbor_socket1)
-    print(message)
-
-    print("I am samaritan. Stopping my good works.")
-
-    closeclientConnection(neighbor_socket1) #close my given port (my side sustained connection as their neighbor)
-
-
-def client_program():#neighbor_ip):
-    neighbor_ip = "146.229.163.144"  # replace with the neighbor's(server's) IP address
-    #connect_port = 11113 #neighbor's (server's) port
-
-    try:
-        neighbor_ip, neighbor_port = requestConnection(neighbor_ip, connectport)
-        print ("server accepted my client connection. hooray!")
-    except:
-        print("I am client. My request to connect to a neighbor failed.")
-
-    message = receiveneighborData(client)
-
-    message = receiveneighborData(client)
-
-    try:
-        print(f"samaritan receiveport is: {neighbor_port}")
-        time.sleep(0.2)
-        requestsustainedConnection(neighbor_ip, neighbor_port)
-        print ("sustained neighbor connection successful. hooray!")
-    except:
-        print("I am client. My request for sustained connection failed.")
-
-    message = receiveneighborData(needy)
-    
-    message = receiveneighborData(needy)
-
-def messageSamaritan(data, num_clients): #server method (server to samaritan)
-    for c in range(num_clients):
+def message_selfsamaritan(data, num_self_samaritans): #server method (server to samaritan)
+    for s in range(num_self_samaritans):
         message_queue.put(data)
 
-def listenServer(): #samaritan method
-  try:
-    message = message_queue.get(timeout=1)  # Wait for a message
-    print(f"received message: {message}")
-    if message == "exit":
-        break
+def listenServer(): #selfsamaritan method listen to server
+    try:
+        message = message_queue.get(timeout=1)  # Wait for a message
+        print(f"received message: {message}")
     except queue.Empty:
         pass  # Continue waiting if queue is empty
 
     
 def main():
     
-    message_queue = queue.Queue()  # create a Shared queue for communication
+    message_queue = Queue()
+
+    #message_queue.Queue()  # create a Shared queue for communication
 
     threading.Thread(target=run_server, args=()).start()
+
+    initial_samaritan_jointo_ip = input("Enter the IP of a node in the blockchain you want to join.")
+
+    threading.Thread(target=run_client, args=(initial_samaritan_jointo_ip)).start()
         
     iplist = order_iplist(iplist)
     print("send ip stub: implement soon")
     print(iplist)
     print("end stub") 
 
-    
-    while true:
 
-        start new connection 
-        num_clients = num_clients+1
-            client program?
-        tup = addr
-        ip = tup[0]
-        iplist.append(ip)
-        send_iplist(iplist)
-        addnode(ip)
+def run_client(initial_samaritan_jointo_ip): #needs periodic ip requesting(checking) added
+
+    #neighbor_ip = "146.229.163.144"  # replace with the neighbor's(server's) IP address
+    #connect_port = 11113 #neighbor's (server's) port
+
+    try:
+        samaritan_ip, samaritan_port = requestConnection(initial_samaritan_jointo_ip, connectport)
+        print ("samaritan accepted my client connection. hooray!")
+    except:
+        print("I am client. My request to connect to a samaritan failed.")
+
+    while(1): #automatic close response present in receivedatafromserver
+        receivedatafromserver(client)
+
+    try:
+        print(f"samaritan receiveport is: {samaritan_port}")
+        time.sleep(0.2)
+        requestsustainedConnection(samaritan_ip, samaritan_port)
+        print ("sustained samaritan connection successful. hooray!")
+    except:
+        print("I am client. My request for sustained connection failed.")
+
+    while(1): #automatic close response present in receivedatafromserver
+        receivedatafromsamaritan(client)
+        received_iplist = request_iplist()
+        message_refresh_iplist(iplist,received_list)
+        sleep(1) #rn iplist updates every second
 
 
-def run_server:
+
+def run_server(): #add func to talk to samaritan and samaritan to listen to server (listenServer)
 
     global givenport
     global receiveport
@@ -401,18 +375,18 @@ def run_server:
         bindasServer(connectport)
         listenforRequests()
 
-        while(1)
+        while(1):
             # accept incoming connections
 
                 # accept incoming connections
-            client_socket = acceptclientConnection() #sit waiting/ready for new clients
-            receiveclientData(client_socket)
-            approveConnection(client_socket) #I tell client what port to talk to me on
+            requester = acceptconnectportConnection() #sit waiting/ready for new clients
+            receivedatafromrequester(requester)
+            approveConnection(requester) #I tell client what port to talk to me on
             receiveport = givenport
             message1 = "final connectport message, about to close"
-            sendclientsocketData(client_socket, message1)
+            senddatathroughclientsocket(requester, message1)
             time.sleep(0.1)
-            closeclientConnection(client_socket)
+            closerequesterConnection(requester)
 
             if(temp):
                 ppid = os.getpid()
@@ -421,58 +395,29 @@ def run_server:
                 if child_pid == 0:            #   This code is executed by the child process
 
                     myip = myIP()
-                    samaritan.bind((myip, receiveport)) 
+                    self_samaritan.bind((myip, receiveport)) 
                     print(f"receiveport is: {receiveport}")
 
-                    samaritan.listen(0)
-                    neighbor_socket = acceptConnection() #wait here for client's sustained request
+                    self_samaritan.listen(0)
+                    neighbor = acceptConnection() #wait here for client's sustained request
 
                     time.sleep(0.5)
                     message2 = "samaritan to neighbor, over"
-                    sendclientsocketData(neighbor_socket, message2)
+                    senddatatoneighbor(neighbor, message2)
 
-                    message3 = "samaritan to neighbor, you can ask for my blockchain now"
-                    sendclientsocketData(neighbor_socket, message3)
-
-                    message = receiveclientData(neighbor_socket)
-                    print(message)
+                    while(1):
+                        message = receivedatafromneighbor(neighbor)
+                        print(message)
+                        if(message == "requesting iplist."):
+                            send_iplist(iplist)
 
                     print("I am samaritan. Stopping my good works.")
-
-                    closeclientConnection(neighbor_socket) #close my given port (my side sustained connection as their neighbor)
-
-       
+                    closeneighborConnection(self_samaritan) #close my given port (my side sustained connection as their neighbor)
 
     except OSError:
-        #If binding fails
+        print("OSerror")
 
 
-
-#client
-    neighbor_ip = "146.229.163.144"  # replace with the neighbor's(server's) IP address
-    #connect_port = 11113 #neighbor's (server's) port
-
-    try:
-        neighbor_ip, neighbor_port = requestConnection(neighbor_ip, connectport)
-        print ("server accepted my client connection. hooray!")
-    except:
-        print("I am client. My request to connect to a neighbor failed.")
-
-    message = receiveneighborData(client)
-
-    message = receiveneighborData(client)
-
-    try:
-        print(f"samaritan receiveport is: {neighbor_port}")
-        time.sleep(0.2)
-        requestsustainedConnection(neighbor_ip, neighbor_port)
-        print ("sustained neighbor connection successful. hooray!")
-    except:
-        print("I am client. My request for sustained connection failed.")
-
-    message = receiveneighborData(needy)
-    
-    message = receiveneighborData(needy)
 
 if __name__ == "__main__":
     main()
