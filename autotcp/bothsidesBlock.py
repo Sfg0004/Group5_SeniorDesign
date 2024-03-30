@@ -22,8 +22,15 @@ samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 neighbor_socket1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 needy = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 neighbor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-connectport = 11170
-givenport = 12260
+connectport = 11186
+givenport = 12276
+
+class FileData:
+    def __init__(self, ipfsHash, fileName, authorName, accessList):
+        self.ipfsHash = ipfsHash
+        self.fileName = fileName
+        self.authorName = authorName
+        self.accessList = accessList
 
 class Account:
     def __init__(self, username, password, role, fullLegalName):
@@ -58,9 +65,19 @@ class Block:
         record = str(self.index) + self.timestamp + self.prevHash
         return self.calculate_hash(record)
 
+#separate function for hashing
+def calculate_hash(s):  # Added this function
+    h = hashlib.sha256()
+    h.update(s.encode('utf-8'))
+    return h.hexdigest()
+
 # Blockchain is a series of validated Blocks
 blockchain = []
 temp_blocks = []
+
+# keep up with all uploaded IPFS hashes and file names
+ipfsHashes = []
+fileNames = []
 
 # generate_genesis_block creates the genesis block
 def generate_genesis_block():
@@ -74,69 +91,101 @@ def generate_block(oldBlock, address, transactionType, payload):
     new_block = Block(oldBlock.index + 1, t, oldBlock.hash, address, transactionType, payload)
     return new_block
 
+def generate_sample_blocks():
+    t = str(datetime.now())
+    address = ""
+    address = calculate_hash(t)
+    accessList = []
+    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmRB39JYBwEqfpDJ5czsBpxrBtwXswTB4HUiiyvhS1b7ii", "chest_xray.png", "Genesis", accessList)))
+    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmeUp1ciEQnKo9uXLi1SH3V6Z6YQHtMHRgMbzNLaHt6gJH", "Patient Info.txt", "Genesis", accessList)))
+    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmeuNtvAJT8HMPgzEyuHCnWiMQkpwHBtAEHmzH854TqJXW", "RADRPT 08-13-2023.pdf", "Genesis", accessList)))
+    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmYRJY3Uq8skTrREx7aFkE7Ym7hXA6bk5pqJE9gWrhFB6n", "Project Timeline.pdf", "Genesis", accessList)))
+
+#makes the blockchain print better!
+def printBlockchain():
+    for block in blockchain:
+        if block.transactionType == "Genesis":
+            printGenesisBlock()
+        else:
+            print("\nIndex: " + str(block.index))
+            print("Timestamp: " + block.timestamp)
+            print("Previous Hash: " + block.prevHash)
+            print("Validator: " + block.validatorName)
+            print("Hash: " + block.hash)
+            print("Type: " + block.transactionType)
+            if block.transactionType != "Create_Account":
+                print("IPFS Hash: " + block.payload.ipfsHash)
+                print("File Name: " + block.payload.fileName)
+            else:
+                print("Username: " + block.payload.username)
+                print("Password: " + block.payload.password)
+                print("Role: " + block.payload.role)
+        print("-----------------------------------------")
+
+#prints the genesis block better
+def printGenesisBlock():
+    block = blockchain[0]
+    print("\nIndex: " + str(block.index))
+    print("Timestamp: " + block.timestamp)
+    print("Type: " + block.transactionType)
+
+#assembles blockchain to be sent to requesting neighbor
 def assembleBlockchain():
+    message = ""
     for block in blockchain:
         if block.transactionType == "Genesis":
             print("Genesis would go here")
-            genesis = printGenesisBlock()
-            
+            genesis = expandGenesisBlock()
+            message = message + genesis
         else:
-            # sendclientsocketData(neighbor_socket1, "\nIndex: " + str(block.index))
-            # sendclientsocketData(neighbor_socket1, "Timestamp: " + block.timestamp)
-            # sendclientsocketData(neighbor_socket1, "Previous Hash: " + block.prevHash)
-            # sendclientsocketData(neighbor_socket1, "Validator: " + block.validatorName)
-            # sendclientsocketData(neighbor_socket1, "Hash: " + block.hash)
-            # sendclientsocketData(neighbor_socket1, "Type: " + block.transactionType)
-            # print("\nIndex: " + str(block.index))
-            # print("Timestamp: " + block.timestamp)
-            # print("Previous Hash: " + block.prevHash)
-            # print("Validator: " + block.validatorName)
-            # print("Hash: " + block.hash)
-            # print("Type: " + block.transactionType)
+            standardBlock = expandStandardblock(block)
+            message = message + standardBlock
             if block.transactionType != "Create_Account":
-                
                 hash = "IPFS Hash: " + block.payload.ipfsHash
                 filename = "File Name: " + block.payload.fileName
-                message = genesis + hash + fileName
-                print(message)
-                return message
-                #sendclientsocketData(neighbor_socket1, message)
-
-
-                # sendclientsocketData(neighbor_socket1, "IPFS Hash: " + block.payload.ipfsHash)
-                # sendclientsocketData(neighbor_socket1, "File Name: " + block.payload.fileName)
-                #print("IPFS Hash: " + block.payload.ipfsHash)
-                #print("File Name: " + block.payload.fileName)
+                upload = "\n" + hash + "\n" + filename
+                message = message + upload
             else:
-                print("bruh")
-                username = "Username: " + block.payload.username
-                password = "Password: " + block.payload.password
-                role = "Role: " + block.payload.role
-                dashes = "-----------------------------------------"
-                message = "\n" + dashes + "\n" + genesis + "\n" + username + "\n" + password + "\n" + role + "\n" + dashes
-                return message
-                #sendclientsocketData(neighbor_socket1, "Username: " + block.payload.username)
-                # sendclientsocketData(neighbor_socket1, "Password: " + block.payload.password)
-                # sendclientsocketData(neighbor_socket1, "Role: " + block.payload.role)
-        #sendclientsocketData(neighbor_socket1, "-----------------------------------------")
-        #print("-----------------------------------------")
+                credentialBlock = expandCredentials(block)
+                message = message + credentialBlock
+    return message    
 
-def printGenesisBlock():
+#assembles genesis block to be sent to requesting neighbor
+def expandGenesisBlock():
     block = blockchain[0]
     index = "Index: " + str(block.index)
     time = "Timestamp: " + block.timestamp
     type = "Type: " + block.transactionType
-    dashes = "-----------------------------------------"
-    genesis = index + "\n" + time + "\n"+ type + "\n" + dashes
-    return genesis
-    #sendclientsocketData(neighbor_socket1, genesis)
-    # sendclientsocketData(neighbor_socket1, "\nIndex: " + str(block.index))
-    # sendclientsocketData(neighbor_socket1, "Timestamp: " + block.timestamp)
-    # sendclientsocketData(neighbor_socket1, "Type: " + block.transactionType)
-    #print("\nIndex: " + str(block.index))
-    #print("Timestamp: " + block.timestamp)
-    #print("Type: " + block.transactionType)        
+    genesis = "\n" + index + "\n" + time + "\n"+ type
+    return genesis       
 
+#assembles standard block to be sent to requesting neighbor
+def expandStandardblock(block):
+    index = "Index: " + str(block.index)
+    time = "Timestamp: " + block.timestamp
+    prevHash = "Previous Hash: " + block.prevHash
+    validator = "Validator: " + block.validatorName
+    hash = "Hash: " + block.hash
+    type = "Type: " + block.transactionType
+    message1 = "\n" + index + "\n" + time + "\n" + prevHash + "\n" + validator + "\n" + hash + "\n" + type
+    return message1
+
+#assembles user credential block to be sent to requesting neighbor
+def expandCredentials(block):
+    print("bruh")
+    username = "Username: " + block.payload.username
+    password = "Password: " + block.payload.password
+    role = "Role: " + block.payload.role
+    message3 = "\n" + username + "\n" + password + "\n" + role
+    return message3
+
+#prints generic menu to user
+def printGenericMenu():
+    print("\n[1] Upload File\n")
+    print("[2] Download File\n")
+    print("[q] Quit\n")
+
+#finds the user's IP
 def myIP():
     return (ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr'])
 
@@ -327,8 +376,14 @@ def server_program():
     message = receiveclientData(neighbor_socket1)
     print(message)
 
-    sendBlockchain = str(assembleBlockchain())
-    sendclientsocketData(neighbor_socket1, sendBlockchain)
+    b = assembleBlockchain()
+    sendclientsocketData(neighbor_socket1, b)
+    #sendclientsocketData(neighbor_socket1, blockchain)
+    #print(sendBlockchain)
+    #client_socket.send(sendBlockchain)
+
+    # sendBlockchain = str(assembleBlockchain())
+    # sendclientsocketData(neighbor_socket1, sendBlockchain)
 
     print("I am samaritan. Stopping my good works.")
 
@@ -382,7 +437,8 @@ def client_program():#neighbor_ip):
     needyMessage = "Send me your blockchain please."
     sendneighborData(needyMessage)
 
-    message = receiveneighborData(needy)
+    message = needy.recv(1024)
+    currentBlockchain = message
     message = receiveneighborData(needy)
     # print(message)
 
@@ -396,6 +452,7 @@ def main():
 
     address = ""
     blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("admin", "admin", "a", "Admin")))
+    generate_sample_blocks()
 
     server_program()
     
