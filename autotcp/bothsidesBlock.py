@@ -22,8 +22,8 @@ samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 neighbor_socket1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 needy = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 neighbor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-connectport = 11186
-givenport = 12276
+connectport = 11188
+givenport = 12278
 
 class FileData:
     def __init__(self, ipfsHash, fileName, authorName, accessList):
@@ -187,7 +187,7 @@ def printGenericMenu():
 
 #finds the user's IP
 def myIP():
-    return (ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr'])
+    return (ni.ifaddresses('enp0s3')[ni.AF_INET][0]['addr'])
 
 def listenforRequests(): #server method, connectport
 
@@ -322,6 +322,41 @@ def bindasServer(port):
     # bind the socket to a specific address and port
     server.bind((myip, port)) # I am the server
 
+def convertString(currentBlockchain):
+    blockDictionary = {}
+    delimiters = ["\n"]
+    for delimiter in delimiters:
+        currentBlockchain = " ".join(currentBlockchain.split(delimiter))
+    result = currentBlockchain.split()
+    print(result)
+    i = 0
+    for item in result:
+        if item == "Index:":
+            blockDictionary["Index"] = result[i + 1]
+        elif item == "Timestamp:":
+            blockDictionary["Timestamp"] = result[i + 1]+ " " + result[i+2]
+        elif item == "Previous_Hash:":
+            blockDictionary["Previous_Hash"] = result[i + 1]
+        elif item == "Hash:":
+            blockDictionary["Hash"] = result[i + 1]
+        elif item == "Validator:":
+            blockDictionary["Validator"] = result[i + 1]
+        elif item == "IPFS_Hash:":
+            blockDictionary["IPFS_Hash"] = result[i + 1]
+        elif item == "File_Name:":
+            blockDictionary["File_Name"] = result[i + 1]
+        elif item == "Username:":
+            blockDictionary["Username"] = result[i + 1]
+        elif item == "Password:":
+            blockDictionary["Password"] = result[i + 1]
+        elif item == "Role:":
+            blockDictionary["Role"] = result[i + 1]
+        elif item == "Type:":
+            blockDictionary["Type"] = result[i + 1]
+        
+        i += 1
+    print(blockDictionary)
+    return result
 
 def server_program():
     global givenport
@@ -433,12 +468,15 @@ def client_program():#neighbor_ip):
         print("I am client. My request for sustained connection failed.")
 
     message = receiveneighborData(needy)
+    message = receiveneighborData(needy)
     
     needyMessage = "Send me your blockchain please."
     sendneighborData(needyMessage)
 
-    message = needy.recv(1024)
+    message = receiveneighborData(needy)
     currentBlockchain = message
+    lol = convertString(currentBlockchain)
+    #print(lol)
     message = receiveneighborData(needy)
     # print(message)
 
@@ -454,8 +492,7 @@ def main():
     blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("admin", "admin", "a", "Admin")))
     generate_sample_blocks()
 
-    server_program()
-    
+    client_program()
     
 
 
