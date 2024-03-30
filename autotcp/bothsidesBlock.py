@@ -109,13 +109,13 @@ def printBlockchain():
         else:
             print("\nIndex: " + str(block.index))
             print("Timestamp: " + block.timestamp)
-            print("Previous Hash: " + block.prevHash)
+            print("Previous_Hash: " + block.prevHash)
             print("Validator: " + block.validatorName)
             print("Hash: " + block.hash)
             print("Type: " + block.transactionType)
             if block.transactionType != "Create_Account":
-                print("IPFS Hash: " + block.payload.ipfsHash)
-                print("File Name: " + block.payload.fileName)
+                print("IPFS_Hash: " + block.payload.ipfsHash)
+                print("File_Name: " + block.payload.fileName)
             else:
                 print("Username: " + block.payload.username)
                 print("Password: " + block.payload.password)
@@ -141,9 +141,10 @@ def assembleBlockchain():
             standardBlock = expandStandardblock(block)
             message = message + standardBlock
             if block.transactionType != "Create_Account":
-                hash = "IPFS Hash: " + block.payload.ipfsHash
-                filename = "File Name: " + block.payload.fileName
-                upload = "\n" + hash + "\n" + filename
+                hash = "IPFS_Hash: " + block.payload.ipfsHash
+                filename = "File_Name: " + block.payload.fileName
+                type = "Type: " + block.transactionType
+                upload = "\n" + hash + "\n" + filename + "\n" + type
                 message = message + upload
             else:
                 credentialBlock = expandCredentials(block)
@@ -163,11 +164,11 @@ def expandGenesisBlock():
 def expandStandardblock(block):
     index = "Index: " + str(block.index)
     time = "Timestamp: " + block.timestamp
-    prevHash = "Previous Hash: " + block.prevHash
-    validator = "Validator: " + block.validatorName
+    #type = "Type: " + block.transactionType
+    prevHash = "Previous_Hash: " + block.prevHash
     hash = "Hash: " + block.hash
-    type = "Type: " + block.transactionType
-    message1 = "\n" + index + "\n" + time + "\n" + prevHash + "\n" + validator + "\n" + hash + "\n" + type
+    validator = "Validator: " + block.validatorName
+    message1 = "\n" + index + "\n" + time + "\n" + prevHash + "\n" + hash + "\n" + validator
     return message1
 
 #assembles user credential block to be sent to requesting neighbor
@@ -176,7 +177,8 @@ def expandCredentials(block):
     username = "Username: " + block.payload.username
     password = "Password: " + block.payload.password
     role = "Role: " + block.payload.role
-    message3 = "\n" + username + "\n" + password + "\n" + role
+    type = "Type: " + block.transactionType
+    message3 = "\n" + username + "\n" + password + "\n" + role + "\n" + type
     return message3
 
 #prints generic menu to user
@@ -187,7 +189,7 @@ def printGenericMenu():
 
 #finds the user's IP
 def myIP():
-    return (ni.ifaddresses('enp0s3')[ni.AF_INET][0]['addr'])
+    return (ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr'])
 
 def listenforRequests(): #server method, connectport
 
@@ -358,6 +360,7 @@ def convertString(currentBlockchain):
     print(blockDictionary)
     return result
 
+
 def server_program():
     global givenport
     # create a socket object
@@ -468,12 +471,11 @@ def client_program():#neighbor_ip):
         print("I am client. My request for sustained connection failed.")
 
     message = receiveneighborData(needy)
-    message = receiveneighborData(needy)
     
     needyMessage = "Send me your blockchain please."
     sendneighborData(needyMessage)
 
-    message = receiveneighborData(needy)
+    message = needy.recv(1024)
     currentBlockchain = message
     lol = convertString(currentBlockchain)
     #print(lol)
@@ -492,7 +494,8 @@ def main():
     blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("admin", "admin", "a", "Admin")))
     generate_sample_blocks()
 
-    client_program()
+    server_program()
+    
     
 
 
