@@ -471,11 +471,12 @@ def client_program():#neighbor_ip):
         print("I am client. My request for sustained connection failed.")
 
     message = receiveneighborData(needy)
+    message = receiveneighborData(needy)
     
     needyMessage = "Send me your blockchain please."
     sendneighborData(needyMessage)
 
-    message = needy.recv(1024)
+    message = receiveneighborData(needy)
     currentBlockchain = message
     lol = convertString(currentBlockchain)
     #print(lol)
