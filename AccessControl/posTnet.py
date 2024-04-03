@@ -170,6 +170,28 @@ def handleDownloadInput(conn, max_num):
                 io_write(conn, "Invalid input. Try again: ")    #   give error message
     return choice
 
+
+# user input handling for access list (upload) menu
+# pass the connection and the maximum number listed for choices
+def handleAccessListInput(conn, max_num):
+    notValid = True     # validity flag to break loop
+    while notValid:
+        try:
+            choice = conn.recv(1024).decode('utf-8').strip()    # take user's input
+            choice = int(choice)                            # try to convert to int; if not int, go to exception
+            if choice >= 0 and choice <= max_num:                # make sure choice is in range
+                notValid = False
+            else:                                               # if input is out of range:
+                io_write(conn, "Invalid input. Try again: ")    #   give error message
+        except ValueError:                                      # if input is not an int:
+            if (choice.lower() == "q") and (max_num < 5):       #   check to see if it's "q" (specifically for main menu)
+                notValid = False
+                choice = 0                                      #   convert choice to 4
+            else:                                               # if not q:
+                io_write(conn, "Invalid input. Try again: ")    #   give error message
+    return choice
+
+
 def handleLoginInput(conn):
     notValid = True     # validity flag to break loop
     while notValid:
@@ -215,7 +237,7 @@ def userInput(conn, validator):
         elif choice == 3:
             io_write(conn, "Listing Users...")
             payload = "User list"
-            getUserList(conn)
+            users = getUserList(conn)
             transactionType = "List_Users"
         elif choice == 4:
             io_write(conn, "Logging Out...")
@@ -223,7 +245,7 @@ def userInput(conn, validator):
             transactionType = "Log_Out"
     
     elif (validator.address == '') and (validator.balance == '') and (validator.role =='') and (validator.fullLegalName == ''):
-        printLoginMenu(conn)
+        printLoginMenu(conn) # menu to be printed before account is logged in/when logged out
         io_write(conn, "Input 1 to Login or q to quit: ")
         
         choice = handleLoginInput(conn)
@@ -231,13 +253,13 @@ def userInput(conn, validator):
         payload = "not_determined" 
         if choice == 0:
             io_write(conn, "Log In: ")
-            payload = ""
+            payload = validator
             transactionType = "Log_In"
         elif choice == 1:
             transaction_type = "not_determined"
             io_write(conn, "Closing connection...") 
     else:
-        printGenericMenu(conn)
+        printGenericMenu(conn) #menu to be printed for accounts with doctor or paitent role
         io_write(conn, "Input 1, 2, or q to log out: ")
         
         choice = handleGenericInput(conn)
@@ -311,7 +333,7 @@ def createValidator(conn, accountObj):
 def uploadIpfs(conn, author):
     io_write(conn, "Input the path of your file: ") #requests file path
     fileName = conn.recv(1024).decode('utf-8')
-    command = f"node index.js {fileName[1:-3]} > temp_path.txt"	#runs the command to begin IPFS code and stores into file
+    command = f"node index.js {fileName[0:-1]} > temp_path.txt"	#runs the command to begin IPFS code and stores into file
     os.system(command)	#used to run command is if done in command prompt
     with open ('temp_path.txt') as file:
         lines = file.readlines()	#reads the file
@@ -325,6 +347,27 @@ def uploadIpfs(conn, author):
     fileNames.append(fileName)
 
     accessList = []
+    i = 1
+    addingAccess = True
+    
+    while (addingAccess):
+        io_write(conn, "\n\nAvailable users:\n[0] done\n")
+        optionsAccessList = getUserList(conn)
+        #for users in optionsAccessList:
+        
+        io_write(conn, "\n\nInput the number corresponding to your desired user: ")
+        choice = handleAccessListInput(conn, len(optionsAccessList))
+        if choice != 0:
+            accessList.append(optionsAccessList[choice-1])
+            io_write(conn, str(accessList[choice-1]))
+        elif choice == 0:
+            io_write(conn, "ok done then\n")
+            # add secondary approval ie print accessList and select this it is correct
+            io_write(conn, "users: " + str(accessList) + " \n")
+            addingAccess = False
+        
+    
+#-------------------------------------------------------------------------------------------
     newFileData = FileData(hash, fileName, author, accessList)
 
     return newFileData
@@ -372,11 +415,13 @@ def getUserList(conn):
             userList.append(block.payload.username)
             
     i = 1
-    io_write(conn, "\n\nCurrent Users:\n")
+    # io_write(conn, "\n\nCurrent Users:\n")
     for name in userList:
         io_write(conn, "[" + str(i) + "] " + name + "\n")
         i += 1
-    return
+
+    io_write(conn, "max num = " + str(len(userList)))
+    return userList
 
 def createAccount(conn):
     io_write(conn, "\n\nEnter username: ")
@@ -472,21 +517,22 @@ def main_client_loop(conn):
 
 
             while loggedIn == True:
+              
+                #else:
+                with validator_lock:
+                    old_last_index = blockchain[-1]
+                new_block = generate_block(old_last_index, validator.address, transactionType, payload)
+
+                if is_block_valid(new_block, old_last_index):
+                    candidate_blocks.append(new_block)
+                    
+                else:
+                     io_write(conn, "\nNot a valid input.\n")
+                
                 # if user quit:
                 if transactionType == "Log_Out":
                     loggedIn = False
                     break
-                else:
-                #move this section up before quit and SHOULD add blocks to chain for log in/out function
-                    with validator_lock:
-                        old_last_index = blockchain[-1]
-                    new_block = generate_block(old_last_index, validator.address, transactionType, payload)
-
-                    if is_block_valid(new_block, old_last_index):
-                        candidate_blocks.append(new_block)
-                        
-                    else:
-                         io_write(conn, "\nNot a valid input.\n")
 
                 payload, transactionType = userInput(conn, validator)
             
@@ -500,7 +546,7 @@ def main_client_loop(conn):
 
     except Exception as q:
         #print(f"Connection closed: {q}")
-        print(f"Connection closed: {traceback.format_exc()}") # for more detailed error message
+        # print(f"Connection closed: {traceback.format_exc()}") # for more detailed error message
         conn.close()
 
 # calculate weighted probability for each validator
