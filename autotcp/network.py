@@ -24,8 +24,8 @@ samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 self_samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 neighbor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 initial_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-connectport = 11340
-givenport = 12340
+connectport = 11341
+givenport = 12341
 
 #client ip address array
 nodelist = [] #local list of node objects
@@ -35,7 +35,7 @@ clientOut = open('clientOut.txt','a')
 client_lock = threading.Lock()
 
 def write_to_client_out(data):
-    with file_lock:
+    with client_lock:
         clientOut.write(data)
         clientOut.flush()
 
