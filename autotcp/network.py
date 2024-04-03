@@ -24,20 +24,27 @@ samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 self_samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 neighbor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 initial_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-connectport = 11341
-givenport = 12341
+connectport = 11342
+givenport = 12342
 
 #client ip address array
 nodelist = [] #local list of node objects
 iplist = [] #ips only - for sending & receiving node update between nodes
 
 clientOut = open('clientOut.txt','a')
+blockFile = open('blockFile.txt','a')
+
 client_lock = threading.Lock()
 
 def write_to_client_out(data):
     with client_lock:
         clientOut.write(data)
         clientOut.flush()
+
+def write_to_block_file(data):
+    with client_lock:
+        blockFile.write(data)
+        blockFile.flush()
 
 class nodes:
      def __init__(self, ip, latency, isneighbor):
@@ -283,6 +290,7 @@ def receivedatafromsamaritan(client): #client method
     response = response.decode("utf-8")
    
     write_to_client_out(f"I am client. Received: {response}")
+    write_to_block_file(response)
 
     if response.lower() == "closed":
         closesamaritanConnection(client)
@@ -384,9 +392,9 @@ def run_client(initial_samaritan_jointo_ip): #needs periodic ip requesting(check
 
     try:
         while(1): #automatic close response present in receivedatafromserver
-            receivedatafromsamaritan(client)
-            received_iplist = request_iplist(client)
-            message_refresh_iplist(iplist,received_list)
+            receivedatafromsamaritan(client) #will write to clientout.txt and blockfile.txt
+            #received_iplist = request_iplist(client)
+            #message_refresh_iplist(iplist,received_list)
             time.sleep(1) #rn iplist updates every second
     except:
         clientOut.close() 
@@ -433,6 +441,8 @@ def run_server(): #add func to talk to samaritan and samaritan to listen to serv
                     while(1):
                         message = receivedatafromneighbor(neighbor)
                         print(message)
+                        blockchain = "BLOCKCHAIN"
+                        senddatatoneighbor(neighbor, blockchain)
                         if(message == "requesting iplist."):
                             send_iplist(iplist)
 
