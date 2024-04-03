@@ -6,6 +6,7 @@ import socket
 import time
 import random
 import threading
+import sys
 import os
 import requests
 from random import randint
@@ -23,8 +24,8 @@ samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 self_samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 neighbor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 initial_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-connectport = 11326
-givenport = 12326
+connectport = 11337
+givenport = 12337
 
 #client ip address array
 nodelist = [] #local list of node objects
@@ -333,20 +334,24 @@ def main():
 
     #message_queue.Queue()  # create a Shared queue for communication
 
-    threading.Thread(target=run_server, args=()).start()
+    
 
-    time.sleep(1)
+    
     initial_samaritan_jointo_ip = input("Enter the IP of a node in the blockchain you want to join: ")
-    #initial_samaritan_jointo_ip = "146.229.163.149"
 
-    print(initial_samaritan_jointo_ip)
+    threading.Thread(target=run_server, args=()).start()
+    #initial_samaritan_jointo_ip = "146.229.163.149"
+    time.sleep(2)
 
     threading.Thread(target=run_client, args=(initial_samaritan_jointo_ip,)).start()
 
 
 
 def run_client(initial_samaritan_jointo_ip): #needs periodic ip requesting(checking) added
-
+    original_stdout = sys.stdout
+    clientOut = open('clientOut.txt', 'w')
+    #with open('clientOut.txt', 'w') as clientOut:
+    sys.stdout = clientOut
     #neighbor_ip = "146.229.163.144"  # replace with the neighbor's(server's) IP address
     #connect_port = 11113 #neighbor's (server's) port
     print("debug, in client")
@@ -370,11 +375,14 @@ def run_client(initial_samaritan_jointo_ip): #needs periodic ip requesting(check
     except:
         print("I am client. My request for sustained connection failed.")
 
-    while(1): #automatic close response present in receivedatafromserver
-        receivedatafromsamaritan(client)
-        received_iplist = request_iplist(client)
-        message_refresh_iplist(iplist,received_list)
-        time.sleep(1) #rn iplist updates every second
+    try:
+        while(1): #automatic close response present in receivedatafromserver
+            receivedatafromsamaritan(client)
+            received_iplist = request_iplist(client)
+            message_refresh_iplist(iplist,received_list)
+            time.sleep(1) #rn iplist updates every second
+    except:
+        sys.stdout = original_stdout 
 
 
 
