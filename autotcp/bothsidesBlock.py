@@ -144,7 +144,6 @@ def assembleBlockchain():
     message = ""
     for block in blockchain:
         if block.transactionType == "Genesis":
-            print("Genesis would go here")
             genesis = expandGenesisBlock()
             message = message + genesis
         else:
@@ -295,7 +294,7 @@ def receiveclientData(client_socket): #server method
 
 def receiveneighborData(client): #client method
 
-    response = client.recv(1024)
+    response = client.recv(4096)
     response = response.decode("utf-8")
    
     print(f"I am client. Received: {response}")
@@ -312,7 +311,7 @@ def sendclientData(data): #client method, buffer size 1024 may need to increase 
     client.send(data.encode("utf-8")[:1024])
 
 def sendclientsocketData(client_socket, data): #server method, buffer size 1024 may need to increase to accomodate blockchain message
-    client_socket.send(data.encode("utf-8")[:1024])
+    client_socket.send(data.encode("utf-8")[:4096])
 
 def extractIP(message): #server method
     ip_split = message.split("on ")
@@ -342,6 +341,10 @@ def convertString(currentBlockchain):
     result = currentBlockchain.split()
     #print(result)
     i = 0
+    blockDictionary["Previous_Hash"] = "Default"
+    blockDictionary["Validator"] = "Default"
+    blockDictionary["Hash"] = "hash"
+    accessList = []
     for item in result:
         if item == "Index:":
             blockDictionary["Index"] = result[i + 1]
@@ -370,6 +373,7 @@ def convertString(currentBlockchain):
                 username = blockDictionary['Username']
                 password = blockDictionary['Password']
                 role = blockDictionary['Role']
+                fullLegalName = "admin"
                 payload = Account(username, password, role, fullLegalName)
             elif blockDictionary['Type'] == 'Upload':
                 print("I made it to upload")
@@ -377,9 +381,13 @@ def convertString(currentBlockchain):
                 fileName = blockDictionary['File_Name']
                 validator = blockDictionary['Validator']
                 payload = FileData(ipfsHash, fileName, validator, accessList)
+            else:
+                print(f"block type is: {blockDictionary['Type']}")
+                payload = FileData("", "", "", accessList)
             index = blockDictionary['Index']
             timestamp = blockDictionary['Timestamp']
             prevHash = blockDictionary['Previous_Hash']
+            hash = blockDictionary['Hash']
             validatorName = blockDictionary['Validator']
             transactionType = blockDictionary['Type']
             new_block = GivenBlock(index, timestamp, prevHash, hash, validatorName, transactionType, payload)
@@ -392,6 +400,15 @@ def convertString(currentBlockchain):
 
 def server_program():
     global givenport
+
+    #creates blockchain
+    genesis_block = generate_genesis_block()
+    blockchain.append(genesis_block)
+
+    address = ""
+    blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("admin", "admin", "a", "Admin")))
+    generate_sample_blocks()
+
     # create a socket object
     bindasServer(connectport)
 
@@ -507,7 +524,7 @@ def client_program():#neighbor_ip):
 
     message = receiveneighborData(needy)
     currentBlockchain = message
-    lol = convertString(currentBlockchain)
+    convertString(currentBlockchain)
     #print(lol)
     message = receiveneighborData(needy)
     # print(message)
@@ -517,14 +534,6 @@ def client_program():#neighbor_ip):
     
 def main():
     # Create genesis block and admin account block
-    genesis_block = generate_genesis_block()
-    blockchain.append(genesis_block)
-
-    address = ""
-    blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("admin", "admin", "a", "Admin")))
-    generate_sample_blocks()
-    printBlockchain()
-
 
     server_program()
     
