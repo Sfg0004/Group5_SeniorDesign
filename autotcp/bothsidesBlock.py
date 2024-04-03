@@ -39,6 +39,16 @@ class Account:
         self.role = role
         self.fullLegalName = fullLegalName
 
+class GivenBlock:
+    def __init__(self, index, timestamp, prevHash, hash, validatorName, transactionType, payload):
+        self.index = index                          # block's position in the blockchain
+        self.timestamp = timestamp                  # when block was created (<year>-<mh>-<dy> <hr>:<mi>:<se>.<millis>)
+        self.prevHash = prevHash                    # 64-character hash of previous block (blank for genesis)
+        self.validatorName = validatorName          # address of the validator (blank for genesis)
+        self.hash = hash    # hash for the block
+        self.transactionType = transactionType      # either "Upload", "Download", "Create_Account", or "Genesis"
+        self.payload = payload                      # ** EITHER FILEDATA OR ACCOUNT OBJECT
+
 # Block represents each 'item' in the blockchain
 class Block:
     def __init__(self, index, timestamp, prevHash, validatorName, transactionType, payload):
@@ -330,7 +340,7 @@ def convertString(currentBlockchain):
     for delimiter in delimiters:
         currentBlockchain = " ".join(currentBlockchain.split(delimiter))
     result = currentBlockchain.split()
-    print(result)
+    #print(result)
     i = 0
     for item in result:
         if item == "Index:":
@@ -355,9 +365,28 @@ def convertString(currentBlockchain):
             blockDictionary["Role"] = result[i + 1]
         elif item == "Type:":
             blockDictionary["Type"] = result[i + 1]
-        
+            if blockDictionary['Type'] == 'Create_Account':
+                print("I made it to account")
+                username = blockDictionary['Username']
+                password = blockDictionary['Password']
+                role = blockDictionary['Role']
+                payload = Account(username, password, role, fullLegalName)
+            elif blockDictionary['Type'] == 'Upload':
+                print("I made it to upload")
+                ipfsHash = blockDictionary['IPFS_Hash']
+                fileName = blockDictionary['File_Name']
+                validator = blockDictionary['Validator']
+                payload = FileData(ipfsHash, fileName, validator, accessList)
+            index = blockDictionary['Index']
+            timestamp = blockDictionary['Timestamp']
+            prevHash = blockDictionary['Previous_Hash']
+            validatorName = blockDictionary['Validator']
+            transactionType = blockDictionary['Type']
+            new_block = GivenBlock(index, timestamp, prevHash, hash, validatorName, transactionType, payload)
+            blockchain.append(new_block)
+
         i += 1
-    print(blockDictionary)
+    printBlockchain()
     return result
 
 
@@ -494,6 +523,8 @@ def main():
     address = ""
     blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("admin", "admin", "a", "Admin")))
     generate_sample_blocks()
+    printBlockchain()
+
 
     server_program()
     
