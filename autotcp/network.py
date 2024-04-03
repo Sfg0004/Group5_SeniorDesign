@@ -24,13 +24,20 @@ samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 self_samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 neighbor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 initial_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-connectport = 11337
-givenport = 12337
+connectport = 11340
+givenport = 12340
 
 #client ip address array
 nodelist = [] #local list of node objects
 iplist = [] #ips only - for sending & receiving node update between nodes
 
+clientOut = open('clientOut.txt','a')
+client_lock = threading.Lock()
+
+def write_to_client_out(data):
+    with file_lock:
+        clientOut.write(data)
+        clientOut.flush()
 
 class nodes:
      def __init__(self, ip, latency, isneighbor):
@@ -195,12 +202,12 @@ def requestConnection(server_ip, server_port): #initial_client method
 def requestsustainedConnection(samaritan_ip, samaritan_port): #client method
     samaritan_port = int(samaritan_port)
     try:
-        print(f"Trying to connect to: {samaritan_ip}:{samaritan_port}")
+        write_to_client_out(f"Trying to connect to: {samaritan_ip}:{samaritan_port}")
         client.connect((samaritan_ip, samaritan_port)) #client requests to connect to server
         #message = "beginning sustained connection. love, neighbor"
         #senddatatosamaritan(message)
         #response = receivedatafromsamaritan(client)
-    except Exception as e: print(e)
+    except Exception as e: write_to_client_out(e)
 
 def acceptconnectportConnection(): #server method, only for connectport
     requester_socket, requester_address = server.accept()
@@ -236,12 +243,12 @@ def closerequesterConnection(requester_socket): #server method
 def closeserverConnection(initial_client): #initial_client method
     initial_client.send("client closing".encode("utf-8"))
     initial_client.close()
-    print("I am initial_client. Connection to server closed")
+    write_to_client_out("I am initial_client. Connection to server closed")
 
 def closesamaritanConnection(client): #client method
     client.send("client closing".encode("utf-8"))
     client.close()
-    print("I am client. Connection to samaritan closed")
+    write_to_client_out("I am client. Connection to samaritan closed")
 
 
 def receivedatafromrequester(requester_socket): #server method
@@ -263,7 +270,7 @@ def receivedatafromserver(initial_client): #initial_client method
     response = initial_client.recv(1024)
     response = response.decode("utf-8")
    
-    print(f"I am initial_client. Received: {response}")
+    write_to_client_out(f"I am initial_client. Received: {response}")
 
     if response.lower() == "closed":
         closeserverConnection(initial_client)
@@ -275,7 +282,7 @@ def receivedatafromsamaritan(client): #client method
     response = client.recv(1024)
     response = response.decode("utf-8")
    
-    print(f"I am client. Received: {response}")
+    write_to_client_out(f"I am client. Received: {response}")
 
     if response.lower() == "closed":
         closesamaritanConnection(client)
@@ -348,18 +355,18 @@ def main():
 
 
 def run_client(initial_samaritan_jointo_ip): #needs periodic ip requesting(checking) added
-    original_stdout = sys.stdout
-    clientOut = open('clientOut.txt', 'w')
+   # original_stdout = sys.stdout
+    
     #with open('clientOut.txt', 'w') as clientOut:
-    sys.stdout = clientOut
+    #sys.stdout = clientOut
     #neighbor_ip = "146.229.163.144"  # replace with the neighbor's(server's) IP address
     #connect_port = 11113 #neighbor's (server's) port
-    print("debug, in client")
+    write_to_client_out("debug, in client")
     try:
         samaritan_ip, samaritan_port = requestConnection(initial_samaritan_jointo_ip, connectport)
-        print ("server accepted my client connection. hooray!")
+        write_to_client_out ("server accepted my client connection. hooray!")
     except:
-        print("I am client. My request to connect to a server failed.")
+        write_to_client_out("I am client. My request to connect to a server failed.")
 
     while(1): #automatic close response present in receivedatafromserver
         response = receivedatafromserver(initial_client)
@@ -368,12 +375,12 @@ def run_client(initial_samaritan_jointo_ip): #needs periodic ip requesting(check
         time.sleep(1)
 
     try:
-        print(f"samaritan receiveport is: {samaritan_port}")
+        write_to_client_out(f"samaritan receiveport is: {samaritan_port}")
         time.sleep(2)
         requestsustainedConnection(samaritan_ip, samaritan_port)
-        print ("sustained samaritan connection successful. hooray!")
+        write_to_client_out("sustained samaritan connection successful. hooray!")
     except:
-        print("I am client. My request for sustained connection failed.")
+        write_to_client_out("I am client. My request for sustained connection failed.")
 
     try:
         while(1): #automatic close response present in receivedatafromserver
@@ -382,7 +389,7 @@ def run_client(initial_samaritan_jointo_ip): #needs periodic ip requesting(check
             message_refresh_iplist(iplist,received_list)
             time.sleep(1) #rn iplist updates every second
     except:
-        sys.stdout = original_stdout 
+        clientOut.close() 
 
 
 
