@@ -23,8 +23,8 @@ samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 self_samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 neighbor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 initial_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-connectport = 11321
-givenport = 12321
+connectport = 11326
+givenport = 12326
 
 #client ip address array
 nodelist = [] #local list of node objects
@@ -155,9 +155,9 @@ def order_iplist(iplist):
     return sortedips
 
 
-def request_iplist():
+def request_iplist(client):
 
-    senddatafromclient("requesting iplist.")
+    senddatafromclient("requesting iplist.",client)
     received_iplist = receivedatafromsamaritan(client) #where client is self
     return received_iplist
 
@@ -336,20 +336,13 @@ def main():
     threading.Thread(target=run_server, args=()).start()
 
     time.sleep(1)
-    #initial_samaritan_jointo_ip = input("Enter the IP of a node in the blockchain you want to join: ")
-    initial_samaritan_jointo_ip = "146.229.163.149"
-    #initial_ip = initial_samaritan_jointo_ip
-    print(initial_samaritan_jointo_ip)
-    print("initial_samaritan_jointo_ip is of type:", type(initial_samaritan_jointo_ip))
-    #print("initial_ip is of type:", type(initial_ip))
+    initial_samaritan_jointo_ip = input("Enter the IP of a node in the blockchain you want to join: ")
+    #initial_samaritan_jointo_ip = "146.229.163.149"
 
-    #T here, you needed a comma in the args=() to show that there was only 1 argument
+    print(initial_samaritan_jointo_ip)
+
     threading.Thread(target=run_client, args=(initial_samaritan_jointo_ip,)).start()
-    
-    iplist = order_iplist(iplist)
-    print("send ip stub: implement soon")
-    print(iplist)
-    print("end stub") 
+
 
 
 def run_client(initial_samaritan_jointo_ip): #needs periodic ip requesting(checking) added
@@ -371,7 +364,7 @@ def run_client(initial_samaritan_jointo_ip): #needs periodic ip requesting(check
 
     try:
         print(f"samaritan receiveport is: {samaritan_port}")
-        #time.sleep(1)
+        time.sleep(2)
         requestsustainedConnection(samaritan_ip, samaritan_port)
         print ("sustained samaritan connection successful. hooray!")
     except:
@@ -379,7 +372,7 @@ def run_client(initial_samaritan_jointo_ip): #needs periodic ip requesting(check
 
     while(1): #automatic close response present in receivedatafromserver
         receivedatafromsamaritan(client)
-        received_iplist = request_iplist()
+        received_iplist = request_iplist(client)
         message_refresh_iplist(iplist,received_list)
         time.sleep(1) #rn iplist updates every second
 
@@ -402,10 +395,6 @@ def run_server(): #add func to talk to samaritan and samaritan to listen to serv
             approveConnection(requester) #I tell client what port to talk to me on
             receiveport = givenport
             givenport = givenport + 1
-            #message1 = "final connectport message, about to close"
-            #time.sleep(0.5)
-            #senddatatoneighbor(requester, message1)
-            time.sleep(0.1)
             closerequesterConnection(requester)
 
             if(1):
@@ -425,7 +414,7 @@ def run_server(): #add func to talk to samaritan and samaritan to listen to serv
                     message2 = "samaritan to neighbor, over"
                     senddatatoneighbor(neighbor, message2)
 
-                    neighbor.setblocking(False)
+                    #neighbor.setblocking(False)
                     while(1):
                         message = receivedatafromneighbor(neighbor)
                         print(message)
@@ -435,6 +424,8 @@ def run_server(): #add func to talk to samaritan and samaritan to listen to serv
                     print("I am samaritan. Stopping my good works.")
                     closeneighborConnection(self_samaritan) #close my given port (my side sustained connection as their neighbor)
 
+                else:
+                    os.wait() #parent wait for child
     except OSError:
         print("OSerror")
 
