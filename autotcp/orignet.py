@@ -25,8 +25,8 @@ samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 self_samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 neighbor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 initial_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-connectport = 11350
-givenport = 12350
+connectport = 11356
+givenport = 12356
 
 #client ip address array
 nodelist = [] #local list of node objects
@@ -36,7 +36,7 @@ clientOut = open('clientOut.txt','w')
 client_lock = threading.Lock()
 
 blockFile = open('blockFile.txt','w')
-#block_lock = threading.Lock()
+block_lock = threading.Lock()
 
 def write_to_client_out(data):
     with client_lock:
@@ -44,9 +44,9 @@ def write_to_client_out(data):
         clientOut.flush()
 
 def write_to_block_file(data):
-    #with block_lock:
-    blockFile.write(data)
-    blockFile.flush()
+    with block_lock:
+        blockFile.write(data)
+        blockFile.flush()
 
 class nodes:
      def __init__(self, ip, latency, isneighbor):
@@ -237,10 +237,11 @@ def approveConnection(requester_socket): #server method
     requester_socket.send(response)
 
 #closeclientconnection
-def closeneighborConnection(neighbor_socket): #samaritan method
-    time.sleep(0.5) #without the client sees "acceptedclosed"
-    senddatatoneighbor(neighbor_socket, "closed")
-    neighbor_socket.close()
+def closeneighborConnection(neighbor): #samaritan method
+    #time.sleep(0.5) #without the client sees "acceptedclosed"
+    senddatatoneighbor(neighbor, "closed")
+    time.sleep(1)
+    neighbor.close()
     #print("I am samaritan. Connection to neighbor closed")
 
 def closerequesterConnection(requester_socket): #server method
@@ -344,8 +345,6 @@ def signal_handler(sig, frame):
     print('You pressed Ctrl+C!')
     clientOut.close()
     blockFile.close()
-    closeneighborConnection(self_samaritan)
-    closesamaritanConnection(client)
     sys.exit(0)
 
 def main():
@@ -401,8 +400,13 @@ def run_client(initial_samaritan_jointo_ip): #needs periodic ip requesting(check
 
     try:
         while(1): #automatic close response present in receivedatafromserver
-            blockchain = receivedatafromsamaritan(client)
-            write_to_block_file(blockchain)
+            message = receivedatafromsamaritan(client)
+            if (message.lower() == "closed"):
+                closesamaritanConnection(client)
+                exit(0)
+            else:
+                blockchain = message
+                write_to_block_file(blockchain)
             #received_iplist = request_iplist(client)
             #message_refresh_iplist(iplist,received_list)
             time.sleep(1) #rn iplist updates every second
@@ -449,6 +453,8 @@ def run_server(): #add func to talk to samaritan and samaritan to listen to serv
 
                     while(1):
                         time.sleep(1)
+                        #if(not neighbor)
+                            #exit(0)
                         senddatatoneighbor(neighbor, data)
                         #message = receivedatafromneighbor(neighbor)
                         #if(message == "requesting iplist."):
