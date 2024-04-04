@@ -3,6 +3,7 @@
 import hashlib
 import json
 import socket
+import signal
 import time
 import random
 import threading
@@ -24,8 +25,8 @@ samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 self_samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 neighbor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 initial_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-connectport = 11345
-givenport = 12345
+connectport = 11350
+givenport = 12350
 
 #client ip address array
 nodelist = [] #local list of node objects
@@ -35,7 +36,7 @@ clientOut = open('clientOut.txt','w')
 client_lock = threading.Lock()
 
 blockFile = open('blockFile.txt','w')
-block_lock = threading.Lock()
+#block_lock = threading.Lock()
 
 def write_to_client_out(data):
     with client_lock:
@@ -43,9 +44,9 @@ def write_to_client_out(data):
         clientOut.flush()
 
 def write_to_block_file(data):
-    with block_lock:
-        blockFile.write(data)
-        blockFile.flush()
+    #with block_lock:
+    blockFile.write(data)
+    blockFile.flush()
 
 class nodes:
      def __init__(self, ip, latency, isneighbor):
@@ -240,7 +241,7 @@ def closeneighborConnection(neighbor_socket): #samaritan method
     time.sleep(0.5) #without the client sees "acceptedclosed"
     senddatatoneighbor(neighbor_socket, "closed")
     neighbor_socket.close()
-    print("I am samaritan. Connection to neighbor closed")
+    #print("I am samaritan. Connection to neighbor closed")
 
 def closerequesterConnection(requester_socket): #server method
     time.sleep(0.5) #without the client sees "acceptedclosed"
@@ -256,7 +257,7 @@ def closeserverConnection(initial_client): #initial_client method
 def closesamaritanConnection(client): #client method
     client.send("client closing".encode("utf-8"))
     client.close()
-    write_to_client_out("I am client. Connection to samaritan closed")
+    #write_to_client_out("I am client. Connection to samaritan closed")
 
 
 def receivedatafromrequester(requester_socket): #server method
@@ -320,8 +321,6 @@ def extractIP(message): #server method
     
     client_ip = temp2[0]
     client_port = port_split[1]
-    print(f"ip_split: {client_ip}")
-    print(f"port_split: {client_port}")
 
     return client_ip, client_port
 
@@ -345,6 +344,8 @@ def signal_handler(sig, frame):
     print('You pressed Ctrl+C!')
     clientOut.close()
     blockFile.close()
+    closeneighborConnection(self_samaritan)
+    closesamaritanConnection(client)
     sys.exit(0)
 
 def main():
@@ -400,7 +401,8 @@ def run_client(initial_samaritan_jointo_ip): #needs periodic ip requesting(check
 
     try:
         while(1): #automatic close response present in receivedatafromserver
-            receivedatafromsamaritan(client)
+            blockchain = receivedatafromsamaritan(client)
+            write_to_block_file(blockchain)
             #received_iplist = request_iplist(client)
             #message_refresh_iplist(iplist,received_list)
             time.sleep(1) #rn iplist updates every second
