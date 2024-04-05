@@ -105,9 +105,9 @@ def generate_sample_blocks():
     address = ""
     address = calculate_hash(t)
     accessList = []
-    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmRB39JYBwEqfpDJ5czsBpxrBtwXswTB4HUiiyvhS1b7ii", "chest_xray.png", "Genesis", accessList)))
-    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmeUp1ciEQnKo9uXLi1SH3V6Z6YQHtMHRgMbzNLaHt6gJH", "Patient Info.txt", "Genesis", accessList)))
-    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmeuNtvAJT8HMPgzEyuHCnWiMQkpwHBtAEHmzH854TqJXW", "RADRPT 08-13-2023.pdf", "Genesis", accessList)))
+    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmRB39JYBwEqfpDJ5czsBpxrBtwXswTB4HUiiyvhS1b7ii", "chest_xray.png", "Genesis", ["admin", "mes0063"])))
+    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmeUp1ciEQnKo9uXLi1SH3V6Z6YQHtMHRgMbzNLaHt6gJH", "Patient Info.txt", "Genesis", ["admin"])))
+    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmeuNtvAJT8HMPgzEyuHCnWiMQkpwHBtAEHmzH854TqJXW", "RADRPT 08-13-2023.pdf", "Genesis", ["mes0063"])))
     blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmYRJY3Uq8skTrREx7aFkE7Ym7hXA6bk5pqJE9gWrhFB6n", "Project Timeline.pdf", "Genesis", accessList)))
 
 # user input handling for admin menu
@@ -372,21 +372,32 @@ def uploadIpfs(conn, author):
 
     return newFileData
 
-def retrieveIpfs(conn, author):
+def retrieveIpfs(conn, author): #author of download? i think...
+    io_write(conn, "in retrieveIPFS")
     i = 1
     io_write(conn, "\n\nAvailable files:\n")
-    for name in fileNames:
-        io_write(conn, "[" + str(i) + "] " + name + "\n")
-        i += 1
+    ipfsHashesRet, fileNamesRet, accessListRet = getFileList(1)
+    # io_write(conn, "files "+ str(fileNamesRet) + "\nACLs: " + str(accessListRet)+ "\n")
     
-    io_write(conn, "\n\nInput the number of your desired file: ")
-    choice = handleDownloadInput(conn, len(ipfsHashes))
+    k = 0
+    for file in fileNamesRet:
+        if author in accessListRet[k]:
+            #if user == author:
+            io_write(conn, "[" + str(i) + "] " + file + "\n")
+            i += 1
+        k+=1
 
-    hash = ipfsHashes[choice]
+    if i<1:
+        io_write(conn, "no file access")
+
+    io_write(conn, "\n\nInput the number of your desired file: ")
+    choice = handleDownloadInput(conn, len(ipfsHashesRet))
+
+    hash = ipfsHashesRet[choice]
     url = "https://ipfs.moralis.io:2053/ipfs/" + hash + "/uploaded_file"	#does the url to retrieve the file from IPFS
     r = requests.get(url, allow_redirects=True)
     fileType = r.headers.get("content-type").split("/")[1]
-    fileName = fileNames[choice]
+    fileName = fileNamesRet[choice]
     with open(fileName, "wb") as f:
         f.write(r.content)	#opens the file and adds content
 
@@ -397,15 +408,25 @@ def retrieveIpfs(conn, author):
 
     return newFileData
 
-def getFileList():
+def getFileList(typeChoice):
+    if ((typeChoice>1) or (typeChoice<0)):
+        io_write(conn, "invalid getFileList option")
+        return
+    accessListings = [] # list of accessLists for each file indicated
+    fileNames = []
+    ipfsHashes = []
     for block in blockchain:
         if block.index == 0:
             continue
         if block.transactionType == "Upload":
             ipfsHashes.append(block.payload.ipfsHash)
             fileNames.append(block.payload.fileName)
-    return ipfsHashes, fileNames
-    
+            accessListings.append(block.payload.accessList)
+    if typeChoice == 0:
+        return ipfsHashes, fileNames
+    elif typeChoice == 1:
+        return ipfsHashes, fileNames, accessListings
+
 def getUserList(conn):
     userList = []
     for block in blockchain:
@@ -470,7 +491,7 @@ def printBlockchain():
             print("Validator: " + block.validatorName)
             print("Hash: " + block.hash)
             print("Type: " + block.transactionType)
-            if block.transactionType == ("Upload" or "Download"):
+            if (block.transactionType == "Upload") or (block.transactionType == "Download"):
                 print("IPFS Hash: " + block.payload.ipfsHash)
                 print("File Name: " + block.payload.fileName)
             elif block.transactionType == "List_Users":
@@ -631,15 +652,15 @@ def main():
     generate_sample_blocks()
 
     # get lists of hashes and file names on start-up
-    ipfsHashes, fileNames = getFileList()
+    ipfsHashes, fileNames = getFileList(0)
 
     # Start TCP server
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         #this now allows for connections across computers
-        ip = ni.ifaddresses('eth0')[ni.AF_INET][0]['addr']
+        ip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr']
         print("my ip: " + ip + "\n")
-        port = 5556
+        port = 5555
         server.bind((ip, port))
         server.listen()
         print("Server is running.")
