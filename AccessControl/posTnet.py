@@ -107,8 +107,8 @@ def generate_sample_blocks():
     accessList = []
     blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmRB39JYBwEqfpDJ5czsBpxrBtwXswTB4HUiiyvhS1b7ii", "chest_xray.png", "Genesis", ["admin", "mes0063"])))
     blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmeUp1ciEQnKo9uXLi1SH3V6Z6YQHtMHRgMbzNLaHt6gJH", "Patient Info.txt", "Genesis", ["admin"])))
-    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmeuNtvAJT8HMPgzEyuHCnWiMQkpwHBtAEHmzH854TqJXW", "RADRPT 08-13-2023.pdf", "Genesis", ["mes0063"])))
-    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmYRJY3Uq8skTrREx7aFkE7Ym7hXA6bk5pqJE9gWrhFB6n", "Project Timeline.pdf", "Genesis", accessList)))
+    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmeuNtvAJT8HMPgzEyuHCnWiMQkpwHBtAEHmzH854TqJXW", "RADRPT 08-13-2023.pdf", "Genesis", ["mes0063, role:d"])))
+    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmYRJY3Uq8skTrREx7aFkE7Ym7hXA6bk5pqJE9gWrhFB6n", "Project Timeline.pdf", "Genesis", ["dr"])))
 
 # user input handling for admin menu
 # pass the connection and the maximum number listed for choices
@@ -224,7 +224,7 @@ def userInput(conn, validator):
 
         if choice == 0:
             io_write(conn, "Uploading File...\n")
-            payload = uploadIpfs(conn, validator.address)
+            payload = uploadIpfs(conn, validator)
             transactionType = "Upload"
         elif choice == 1:
             io_write(conn, "Downloading File...")
@@ -237,7 +237,7 @@ def userInput(conn, validator):
         elif choice == 3:
             io_write(conn, "Listing Users...")
             payload = "User list"
-            users = getUserList(conn)
+            users = getUserList(conn, 0)
             transactionType = "List_Users"
         elif choice == 4:
             io_write(conn, "Logging Out...")
@@ -267,7 +267,7 @@ def userInput(conn, validator):
         payload = "not_determined"
         if choice == 0:
             io_write(conn, "Uploading File...\n")
-            payload = uploadIpfs(conn, validator.address)
+            payload = uploadIpfs(conn, validator)
             transactionType = "Upload"
         elif choice == 1:
             io_write(conn, "Downloading File...")
@@ -330,7 +330,7 @@ def createValidator(conn, accountObj):
 
     # NEEDS TO BE PARSED (based on role)
 
-def uploadIpfs(conn, author):
+def uploadIpfs(conn, validator): # is validator obj
     io_write(conn, "Input the path of your file: ") #requests file path
     fileName = conn.recv(1024).decode('utf-8')
     command = f"node index.js {fileName[0:-1]} > temp_path.txt"	#runs the command to begin IPFS code and stores into file
@@ -340,35 +340,55 @@ def uploadIpfs(conn, author):
     path = lines[2]
     parsedPath = path.split('/')	#splits up the file text
     fileName = fileName.split('/')[-1]
-    
+
     hash = parsedPath[4]            # cleans up the hash and the file name
     fileName = fileName[:-3]
     ipfsHashes.append(hash)        # update the hash and file lists
     fileNames.append(fileName)
 
+    returnedAccessList = []
+    returnedRoleList = []
+    returnedAccessList, returnedRoleList= getUserList(conn, 1) # pass 1 to select no print
+    optionsAccessList = []
     accessList = []
-    i = 1
-    addingAccess = True
-    
-    while (addingAccess):
-        io_write(conn, "\n\nAvailable users:\n[0] done\n")
-        optionsAccessList = getUserList(conn)
-        #for users in optionsAccessList:
+
+    io_write(conn, "RACL: " + str(returnedAccessList)+ "\n")
+    io_write(conn, "valdiator: " + str(validator.address) + " role: " + str(validator.role) + "\n")
+    io_write(conn, "user: " + str(returnedAccessList[0])+ " role: " + returnedRoleList[0]+"\n")
+
+
+    for user in range(len(returnedAccessList)):
+        if returnedRoleList[user] == "p":
+            optionsAccessList.append(returnedAccessList[user]) #list of paitent users only
+
+    io_write(conn, "OACL: " + str(optionsAccessList)+ "\n")
+
+
+    if validator.role == "p":  #when paitent uploads a file, only adds them and general dr role
+        accessList.append(validator.address)
+        accessList.append('role:d')
+    elif validator.role == "d":    
+        io_write(conn, "\n\nSelect Paitent to file:\n")
+        
+        i = 1
+        for name in optionsAccessList:
+            io_write(conn, "[" + str(i) + "] " + name + "\n")
+            i += 1
         
         io_write(conn, "\n\nInput the number corresponding to your desired user: ")
         choice = handleAccessListInput(conn, len(optionsAccessList))
-        if choice != 0:
-            accessList.append(optionsAccessList[choice-1])
-            io_write(conn, str(accessList[choice-1]))
-        elif choice == 0:
-            io_write(conn, "ok done then\n")
-            # add secondary approval ie print accessList and select this it is correct
-            io_write(conn, "users: " + str(accessList) + " \n")
-            addingAccess = False
+        accessList.append(optionsAccessList[choice-1])
+        io_write(conn, str(accessList[choice-1]) + "\n")
+        accessList.append('role:d')
+        io_write(conn, "ok done then\n")
+        # add secondary approval ie print accessList and select this it is correct
+        io_write(conn, "users: " + str(accessList) + " \n")
+    else:
+        io_write(conn, "you do not have permission to upload files, contact administrator")
         
     
 #-------------------------------------------------------------------------------------------
-    newFileData = FileData(hash, fileName, author, accessList)
+    newFileData = FileData(hash, fileName, validator, accessList)
 
     return newFileData
 
@@ -427,14 +447,16 @@ def getFileList(typeChoice):
     elif typeChoice == 1:
         return ipfsHashes, fileNames, accessListings
 
-def getUserList(conn):
+def getUserList(conn, typeChoice):
     userList = []
+    roleList = []
     for block in blockchain:
         if block.index == 0:
             continue
         if block.transactionType == "Create_Account":
             userList.append(block.payload.username)
-            
+            roleList.append(block.payload.role)
+    
     i = 1
     # io_write(conn, "\n\nCurrent Users:\n")
     for name in userList:
@@ -442,7 +464,11 @@ def getUserList(conn):
         i += 1
 
     io_write(conn, "max num = " + str(len(userList)))
-    return userList
+
+    if typeChoice == 1:
+        return userList, roleList
+    if typeChoice ==0:
+        return userList
 
 def createAccount(conn):
     io_write(conn, "\n\nEnter username: ")
@@ -646,7 +672,8 @@ def main():
 
     address = ""
     blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("admin", "admin", "a", "Admin")))
-    
+    blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("mes0063", "pass", "p", "mes")))
+    blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("dr", "dr", "d", "doctor")))
     # hi this is caleb. I added this function to test the downloading option.
     # comment this line out to start with a fresh blockchain
     generate_sample_blocks()
