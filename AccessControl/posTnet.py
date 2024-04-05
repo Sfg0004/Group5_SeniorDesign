@@ -178,8 +178,8 @@ def handleAccessListInput(conn, max_num):
     while notValid:
         try:
             choice = conn.recv(1024).decode('utf-8').strip()    # take user's input
-            choice = int(choice)                            # try to convert to int; if not int, go to exception
-            if choice >= 0 and choice <= max_num:                # make sure choice is in range
+            choice = int(choice)-1                           # try to convert to int; if not int, go to exception
+            if choice >= 0 and choice < max_num:                # make sure choice is in range
                 notValid = False
             else:                                               # if input is out of range:
                 io_write(conn, "Invalid input. Try again: ")    #   give error message
@@ -352,16 +352,16 @@ def uploadIpfs(conn, validator): # is validator obj
     optionsAccessList = []
     accessList = []
 
-    io_write(conn, "RACL: " + str(returnedAccessList)+ "\n")
-    io_write(conn, "valdiator: " + str(validator.address) + " role: " + str(validator.role) + "\n")
-    io_write(conn, "user: " + str(returnedAccessList[0])+ " role: " + returnedRoleList[0]+"\n")
+    # io_write(conn, "RACL: " + str(returnedAccessList)+ "\n")
+    # io_write(conn, "valdiator: " + str(validator.address) + " role: " + str(validator.role) + "\n")
+    # io_write(conn, "user: " + str(returnedAccessList[0])+ " role: " + returnedRoleList[0]+"\n")
 
 
     for user in range(len(returnedAccessList)):
         if returnedRoleList[user] == "p":
             optionsAccessList.append(returnedAccessList[user]) #list of paitent users only
 
-    io_write(conn, "OACL: " + str(optionsAccessList)+ "\n")
+    #io_write(conn, "OACL: " + str(optionsAccessList)+ "\n")
 
 
     if validator.role == "p":  #when paitent uploads a file, only adds them and general dr role
@@ -377,26 +377,27 @@ def uploadIpfs(conn, validator): # is validator obj
         
         io_write(conn, "\n\nInput the number corresponding to your desired user: ")
         choice = handleAccessListInput(conn, len(optionsAccessList))
-        accessList.append(optionsAccessList[choice-1])
-        io_write(conn, str(accessList[choice-1]) + "\n")
+        accessList.append(optionsAccessList[choice])
+        # io_write(conn, "chice: "+str(accessList[choice]) + "\n") this line made it really angry idk why
         accessList.append('role:d')
-        io_write(conn, "ok done then\n")
+        #io_write(conn, "ok done then\n")
         # add secondary approval ie print accessList and select this it is correct
         io_write(conn, "users: " + str(accessList) + " \n")
     else:
         io_write(conn, "you do not have permission to upload files, contact administrator")
         
     
-#-------------------------------------------------------------------------------------------
+    #-------------------------------------------------------------------------------------------
     newFileData = FileData(hash, fileName, validator, accessList)
 
     return newFileData
 
 def retrieveIpfs(conn, author): #author of download? i think...
-    io_write(conn, "in retrieveIPFS")
     i = 1
     io_write(conn, "\n\nAvailable files:\n")
     ipfsHashesRet, fileNamesRet, accessListRet = getFileList(1)
+    validHashes = []
+    validNames = []
     # io_write(conn, "files "+ str(fileNamesRet) + "\nACLs: " + str(accessListRet)+ "\n")
     
     k = 0
@@ -405,7 +406,12 @@ def retrieveIpfs(conn, author): #author of download? i think...
             #if user == author:
             io_write(conn, "[" + str(i) + "] " + file + "\n")
             i += 1
+            validHashes.append(ipfsHashesRet[k])
+            validNames.append(file)
         k+=1
+
+    io_write(conn, "valid hashes: "+ str(validHashes)+"\n")
+    io_write(conn, "valid names: "+ str(validNames)+"\n")
 
     if i<1:
         io_write(conn, "no file access")
@@ -413,11 +419,11 @@ def retrieveIpfs(conn, author): #author of download? i think...
     io_write(conn, "\n\nInput the number of your desired file: ")
     choice = handleDownloadInput(conn, len(ipfsHashesRet))
 
-    hash = ipfsHashesRet[choice]
+    hash = validHashes[choice]
     url = "https://ipfs.moralis.io:2053/ipfs/" + hash + "/uploaded_file"	#does the url to retrieve the file from IPFS
     r = requests.get(url, allow_redirects=True)
     fileType = r.headers.get("content-type").split("/")[1]
-    fileName = fileNamesRet[choice]
+    fileName = validNames[choice]
     with open(fileName, "wb") as f:
         f.write(r.content)	#opens the file and adds content
 
@@ -674,6 +680,9 @@ def main():
     blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("admin", "admin", "a", "Admin")))
     blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("mes0063", "pass", "p", "mes")))
     blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("dr", "dr", "d", "doctor")))
+    blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("cwc", "cwc", "p", "cwc")))
+    
+
     # hi this is caleb. I added this function to test the downloading option.
     # comment this line out to start with a fresh blockchain
     generate_sample_blocks()
@@ -687,7 +696,7 @@ def main():
         #this now allows for connections across computers
         ip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr']
         print("my ip: " + ip + "\n")
-        port = 5555
+        port = 5557
         server.bind((ip, port))
         server.listen()
         print("Server is running.")
