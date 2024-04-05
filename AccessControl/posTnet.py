@@ -399,19 +399,50 @@ def retrieveIpfs(conn, author): #author of download? i think...
     validHashes = []
     validNames = []
     # io_write(conn, "files "+ str(fileNamesRet) + "\nACLs: " + str(accessListRet)+ "\n")
+   # io_write(conn, "role: " + validator.role + "\n")
+    doctor = False
+    paitent = False
+    returnedAccessList = []
+    returnedRoleList = []
+    returnedAccessList, returnedRoleList= getUserList(conn, 1) # pass 1 to select no print
+
+    # io_write(conn, "RACL: " + str(returnedAccessList)+ "\n")
+    # io_write(conn, "valdiator: " + str(validator.address) + " role: " + str(validator.role) + "\n")
+    # io_write(conn, "user: " + str(returnedAccessList[0])+ " role: " + returnedRoleList[0]+"\n")
+
+    io_write(conn, "RACL : " + str(returnedAccessList) + "\n")
+    userIndex = returnedAccessList.index(author)
+    io_write(conn, "userIndex: " + str(userIndex) + "\n")
+
+    if returnedRoleList[userIndex] == "p":
+        paitent = True
+        doctor = False
+    elif returnedRoleList[userIndex] == "d":
+        doctor = True
+        paitent = False
     
     k = 0
-    for file in fileNamesRet:
-        if author in accessListRet[k]:
-            #if user == author:
-            io_write(conn, "[" + str(i) + "] " + file + "\n")
-            i += 1
-            validHashes.append(ipfsHashesRet[k])
-            validNames.append(file)
-        k+=1
+    if (doctor == True) and (paitent == False):
+        io_write(conn, "doc\n")
+        validNames = fileNamesRet
+        validHashes = ipfsHashesRet
+    elif (doctor == False) and (paitent == True):
+        io_write(conn, "pait\n")
+        for file in fileNamesRet:
+            if author in accessListRet[k]:
+                #if user == author:
+                validHashes.append(ipfsHashesRet[k])
+                validNames.append(file)
+            k+=1
+    else:
+        io_write(conn, "you do not have permission to download files, contact administrator")
 
-    io_write(conn, "valid hashes: "+ str(validHashes)+"\n")
-    io_write(conn, "valid names: "+ str(validNames)+"\n")
+    for x in validNames:
+        io_write(conn, "[" + str(i) + "] " + x + "\n")
+        i += 1
+
+    # io_write(conn, "valid hashes: "+ str(validHashes)+"\n")
+    # io_write(conn, "valid names: "+ str(validNames)+"\n")
 
     if i<1:
         io_write(conn, "no file access")
@@ -465,15 +496,18 @@ def getUserList(conn, typeChoice):
     
     i = 1
     # io_write(conn, "\n\nCurrent Users:\n")
-    for name in userList:
-        io_write(conn, "[" + str(i) + "] " + name + "\n")
-        i += 1
+    # for name in userList:
+    #     io_write(conn, "[" + str(i) + "] " + name + "\n")
+    #     i += 1
 
-    io_write(conn, "max num = " + str(len(userList)))
+    # io_write(conn, "max num = " + str(len(userList)))
 
     if typeChoice == 1:
         return userList, roleList
-    if typeChoice ==0:
+    if typeChoice == 0:
+        for name in userList:
+            io_write(conn, "[" + str(i) + "] " + name + "\n")
+            i += 1
         return userList
 
 def createAccount(conn):
@@ -696,7 +730,7 @@ def main():
         #this now allows for connections across computers
         ip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr']
         print("my ip: " + ip + "\n")
-        port = 5557
+        port = 5556
         server.bind((ip, port))
         server.listen()
         print("Server is running.")
