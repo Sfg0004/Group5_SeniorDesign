@@ -29,8 +29,8 @@ samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 self_samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 neighbor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 initial_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-connectport = 11392
-givenport = 12392
+connectport = 11399
+givenport = 12399
 
 def myIP():
     return (ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr'])
@@ -52,15 +52,15 @@ def main():
     client_to_self_samaritan = Queue()
 
     #message_queue.Queue()  # create a Shared queue for communication
-    initial_samaritan_jointo_ip = "146.229.163.147"#input("Enter the IP of a node in the blockchain you want to join: ")
+    initial_samaritan_jointo_ip = "146.229.163.149"#input("Enter the IP of a node in the blockchain you want to join: ")
 
-    threading.Thread(target=run_server, args=(self_samaritan_to_client,client_to_self_samaritan,)).start()
+    threading.Thread(target=run_server, args=()).start()#self_samaritan_to_client,client_to_self_samaritan,)).start()
     #initial_samaritan_jointo_ip = "146.229.163.149"
     time.sleep(2)
 
-    threading.Thread(target=run_client, args=(initial_samaritan_jointo_ip,self_samaritan_to_client,client_to_self_samaritan,)).start()
+    threading.Thread(target=run_client, args=(initial_samaritan_jointo_ip,)).start()#self_samaritan_to_client,client_to_self_samaritan,)).start()
 
-def run_client(initial_samaritan_jointo_ip,self_samaritan_to_client,client_to_self_samaritan): #needs periodic ip requesting(checking) added
+def run_client(initial_samaritan_jointo_ip):#self_samaritan_to_client,client_to_self_samaritan): #needs periodic ip requesting(checking) added
    # original_stdout = sys.stdout
     
     #with open('clientOut.txt', 'w') as clientOut:
@@ -121,7 +121,7 @@ def run_client(initial_samaritan_jointo_ip,self_samaritan_to_client,client_to_se
     except:
         comm.clientOut.close() 
 
-def run_server(self_samaritan_to_client, client_to_self_samaritan): #add func to talk to samaritan and samaritan to listen to server (listenServer)
+def run_server():#self_samaritan_to_client, client_to_self_samaritan): #add func to talk to samaritan and samaritan to listen to server (listenServer)
     global receiveport
     global givenport
     try:
@@ -165,7 +165,7 @@ def run_server(self_samaritan_to_client, client_to_self_samaritan): #add func to
                         block.blockchain.append(genesis_block)
                         block.generate_sample_blocks()
                         blockchain = block.assembleBlockchain()
-                        comm.senddatatoneighbor(blockchain, client)
+                        comm.senddatatoneighbor(neighbor, blockchain)
                         #data = "Server Data"
                         #comm.senddatatoneighbor(neighbor, data)
                         message = comm.receivedatafromneighbor(neighbor)
