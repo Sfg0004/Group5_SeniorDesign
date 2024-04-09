@@ -48,18 +48,19 @@ def main():
 
     global iplist
     
-    message_queue = Queue()
+    self_samaritan_to_client = Queue()
+    client_to_self_samaritan = Queue()
 
     #message_queue.Queue()  # create a Shared queue for communication
     initial_samaritan_jointo_ip = "146.229.163.147"#input("Enter the IP of a node in the blockchain you want to join: ")
 
-    threading.Thread(target=run_server, args=()).start()
+    threading.Thread(target=run_server, args=(self_samaritan_to_client,client_to_self_samaritan,)).start()
     #initial_samaritan_jointo_ip = "146.229.163.149"
     time.sleep(2)
 
-    threading.Thread(target=run_client, args=(initial_samaritan_jointo_ip,)).start()
+    threading.Thread(target=run_client, args=(initial_samaritan_jointo_ip,self_samaritan_to_client,client_to_self_samaritan,)).start()
 
-def run_client(initial_samaritan_jointo_ip): #needs periodic ip requesting(checking) added
+def run_client(initial_samaritan_jointo_ip,self_samaritan_to_client,client_to_self_samaritan): #needs periodic ip requesting(checking) added
    # original_stdout = sys.stdout
     
     #with open('clientOut.txt', 'w') as clientOut:
@@ -90,15 +91,15 @@ def run_client(initial_samaritan_jointo_ip): #needs periodic ip requesting(check
     try:
         while(1): #automatic close response present in receivedatafromserver
             #message = comm.receivedatafromsamaritan(client)
-            #sample = "1234"
+            sample = "1234"
             #print("I got the sample")
             
             #NEED ADMIN BLOCK
-            genesis_block = block.generate_genesis_block()
-            block.blockchain.append(genesis_block)
-            block.generate_sample_blocks()
-            blockchain = block.assembleBlockchain()
-            comm.senddatafromclient(blockchain, client)
+            # genesis_block = block.generate_genesis_block()
+            # block.blockchain.append(genesis_block)
+            # block.generate_sample_blocks()
+            # blockchain = block.assembleBlockchain()
+            comm.senddatafromclient(sample, client)
 
             # if (message.lower() == "closed"):
             #     comm.closesamaritanConnection(client)
@@ -120,7 +121,7 @@ def run_client(initial_samaritan_jointo_ip): #needs periodic ip requesting(check
     except:
         comm.clientOut.close() 
 
-def run_server(): #add func to talk to samaritan and samaritan to listen to server (listenServer)
+def run_server(self_samaritan_to_client, client_to_self_samaritan): #add func to talk to samaritan and samaritan to listen to server (listenServer)
     global receiveport
     global givenport
     try:
@@ -159,8 +160,14 @@ def run_server(): #add func to talk to samaritan and samaritan to listen to serv
                         time.sleep(1)
                         #if(not neighbor)
                             #exit(0)
-                        data = "Server Data"
-                        comm.senddatatoneighbor(neighbor, data)
+                        #NEED ADMIN BLOCK
+                        genesis_block = block.generate_genesis_block()
+                        block.blockchain.append(genesis_block)
+                        block.generate_sample_blocks()
+                        blockchain = block.assembleBlockchain()
+                        comm.senddatatoneighbor(blockchain, client)
+                        #data = "Server Data"
+                        #comm.senddatatoneighbor(neighbor, data)
                         message = comm.receivedatafromneighbor(neighbor)
                         #if(message == "requesting iplist."):
                             #send_iplist(iplist)
