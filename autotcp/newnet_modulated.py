@@ -29,8 +29,8 @@ samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 self_samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 neighbor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 initial_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-connectport = 11381
-givenport = 12381
+connectport = 11392
+givenport = 12392
 
 def myIP():
     return (ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr'])
@@ -90,23 +90,33 @@ def run_client(initial_samaritan_jointo_ip): #needs periodic ip requesting(check
     try:
         while(1): #automatic close response present in receivedatafromserver
             #message = comm.receivedatafromsamaritan(client)
-            sample = "1234"
+            #sample = "1234"
+            #print("I got the sample")
+            
+            #NEED ADMIN BLOCK
+            genesis_block = block.generate_genesis_block()
+            block.blockchain.append(genesis_block)
+            block.generate_sample_blocks()
+            blockchain = block.assembleBlockchain()
+            comm.senddatafromclient(blockchain, client)
 
-            #genesis_block = block.generate_genesis_block()
-            #block.blockchain.append(genesis_block)
-            #block.generate_sample_blocks()
-
-            if (message.lower() == "closed"):
-                comm.closesamaritanConnection(client)
-                exit(0)
-            else:
+            # if (message.lower() == "closed"):
+            #     comm.closesamaritanConnection(client)
+            #     exit(0)
+            # else:
                 #blockchain = block.assembleBlockchain()
                 #comm.write_to_block_file(message)
-                comm.senddatafromclient(sample)
                 #comm.senddatafromclient(blockchain)
             #received_iplist = request_iplist(client)
             #message_refresh_iplist(iplist,received_list)
-            time.sleep(1) #rn iplist updates every second
+            time.sleep(3) #rn iplist updates every second
+
+            message = comm.receivedatafromsamaritan(client)
+
+            if (message.lower() == "closed"):
+                 comm.closesamaritanConnection(client)
+                 exit(0)
+
     except:
         comm.clientOut.close() 
 
@@ -149,7 +159,8 @@ def run_server(): #add func to talk to samaritan and samaritan to listen to serv
                         time.sleep(1)
                         #if(not neighbor)
                             #exit(0)
-                        #comm.senddatatoneighbor(neighbor, data)
+                        data = "Server Data"
+                        comm.senddatatoneighbor(neighbor, data)
                         message = comm.receivedatafromneighbor(neighbor)
                         #if(message == "requesting iplist."):
                             #send_iplist(iplist)
