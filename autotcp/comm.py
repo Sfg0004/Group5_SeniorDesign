@@ -172,7 +172,7 @@ def message_selfsamaritan(data, num_self_samaritans, message_queue): #server met
 
 def receivedatafromsamaritan(client): #client method
 
-    response = client.recv(1024)
+    response = client.recv(4096)
     response = response.decode("utf-8")
    
     write_to_client_out(f"I am client. Received: {response}")
@@ -188,22 +188,22 @@ def closesamaritanConnection(client): #client method
     #write_to_client_out("I am client. Connection to samaritan closed")
 
 def receivedatafromneighbor(neighbor_socket): #server method
-    request = neighbor_socket.recv(1024)
+    request = neighbor_socket.recv(4096)
     request = request.decode("utf-8") # convert bytes to string
     print(f"I am server. Received: {request}")
 
     return request
 
 def senddatatorequester(requester_socket, data): #server method, buffer size 1024 may need to increase to accomodate blockchain message
-    requester_socket.send(data.encode("utf-8")[:1024])
+    requester_socket.send(data.encode("utf-8")[:4096])
 
 def senddatatoneighbor(neighbor_socket, data): #samaritan method, buffer size 1024 may need to increase to accomodate blockchain message
-    neighbor_socket.send(data.encode("utf-8")[:1024])
+    neighbor_socket.send(data.encode("utf-8")[:4096])
     
 #sendclientdata
 def senddatafrominitialclient(data, initial_client): #initial_client method, buffer size 1024 may need to increase to accomodate blockchain message
-    initial_client.send(data.encode("utf-8")[:1024])
+    initial_client.send(data.encode("utf-8")[:4096])
 
 #sendclientdata
 def senddatafromclient(data, client): #client method, buffer size 1024 may need to increase to accomodate blockchain message
-    client.send(data.encode("utf-8")[:1024])
+    client.send(data.encode("utf-8")[:4096])
