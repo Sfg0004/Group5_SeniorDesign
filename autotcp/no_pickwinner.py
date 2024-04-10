@@ -1,3 +1,7 @@
+#change eth interface name if necessary in myIP()
+from methods import block
+#from methods import decentral
+from methods import comm
 
 import hashlib
 import json
@@ -17,22 +21,22 @@ import shlex
 from subprocess import Popen, PIPE, STDOUT
 import ipaddress
 import multiprocessing
-import re
-from moralis import evm_api
-import base64
 
-"""
-For IPFS upload/download:
 
-Install Moralis Module:
-    pip install moralis
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #new socket object
+client = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+self_samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+neighbor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+initial_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+connectport = 11412
+givenport = 12412
 
-Install Requests Module:
-    pip install requests
-
-"""
-
-#CLASSES
+# 
+#
+# BLOCK.PY CLASSES
+#
+#
 class Validator:
     def __init__(self, balance, account): # account is an Account object!
         self.address = account.username
@@ -86,8 +90,7 @@ class Block: # Block represents each 'item' in the blockchain
         record = str(self.index) + self.timestamp + self.prevHash
         return self.calculateHash(record)
 
-
-#VARIABLES
+#BLOCK.PY VARIABLES
 blockchain = [] # Blockchain is a series of validated Blocks
 tempBlocks = []
 ipfsHashes = [] # keep up with all uploaded IPFS hashes and file names
@@ -102,6 +105,159 @@ stopThreads = False # use flag to stop threading
 # key for ipfs upload
 apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6ImE0NmE4MmFjLWJlYjEtNGM4MC05MjIwLTIxZDFlNGQ3MGM1NyIsIm9yZ0lkIjoiMzU5ODUyIiwidXNlcklkIjoiMzY5ODMwIiwidHlwZUlkIjoiNTY2M2MwZjAtMmM3Mi00N2YxLWJkMDktNTM1M2RmYmZhNjhhIiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE2OTY0NDQ5MTgsImV4cCI6NDg1MjIwNDkxOH0.kW9jP_Y_2JA70nCkUaBQMW329kQK6vuyHIfFNym0SNs"
 changeFlag = True
+
+def myIP():
+    return (ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr'])
+
+def signal_handler(sig, frame):
+    print('You pressed Ctrl+C!')
+    comm.clientOut.close()
+    comm.blockFile.close()
+    sys.exit(0)
+
+def main():
+    myip = comm.myIP()
+
+    signal.signal(signal.SIGINT, signal_handler)
+
+    global iplist
+    
+    self_samaritan_to_client = Queue()
+    client_to_self_samaritan = Queue()
+
+    #message_queue.Queue()  # create a Shared queue for communication
+    initial_samaritan_jointo_ip = "146.229.163.144"#input("Enter the IP of a node in the blockchain you want to join: ")
+
+    threading.Thread(target=run_server, args=()).start()#self_samaritan_to_client,client_to_self_samaritan,)).start()
+    #initial_samaritan_jointo_ip = "146.229.163.149"
+    time.sleep(2)
+
+    threading.Thread(target=run_client, args=(initial_samaritan_jointo_ip,)).start()#self_samaritan_to_client,client_to_self_samaritan,)).start()
+
+def run_client(initial_samaritan_jointo_ip):#self_samaritan_to_client,client_to_self_samaritan): #needs periodic ip requesting(checking) added
+   # original_stdout = sys.stdout
+    
+    #with open('clientOut.txt', 'w') as clientOut:
+    #sys.stdout = clientOut
+    #neighbor_ip = "146.229.163.144"  # replace with the neighbor's(server's) IP address
+    #connect_port = 11113 #neighbor's (server's) port
+    comm.write_to_client_out("debug, in client\n")
+    while(1):
+        try:
+            samaritan_ip, samaritan_port = comm.requestConnection(initial_samaritan_jointo_ip, connectport, initial_client, givenport)
+            comm.write_to_client_out ("server accepted my client connection. hooray!")
+            break
+        except:
+            comm.write_to_client_out("I am client. My request to connect to a server failed.")
+            if len(blockchain) == 0:
+                print("Creating blockchain...")
+                genesisBlock = generateGenesisBlock()
+                blockchain.append(genesisBlock)
+                generateSampleBlocks()
+
+    while(1): #automatic close response present in receivedatafromserver
+        response = comm.receivedatafromserver(initial_client)
+        if (response == "closed"):
+            break
+        time.sleep(1)
+
+    try:
+        comm.write_to_client_out(f"samaritan receiveport is: {samaritan_port}")
+        time.sleep(5)
+        comm.requestsustainedConnection(samaritan_ip, samaritan_port, client)
+        comm.write_to_client_out("sustained samaritan connection successful. hooray!")
+    except:
+        comm.write_to_client_out("I am client. My request for sustained connection failed.")
+
+    try:
+        while(1): #automatic close response present in receivedatafromserver
+            #message = comm.receivedatafromsamaritan(client)
+            sample = "5678"
+            #print("I got the sample")
+            
+            #NEED ADMIN BLOCK
+            # genesis_block = block.generate_genesis_block()
+            # block.blockchain.append(genesis_block)
+            # block.generate_sample_blocks()
+            # blockchain = block.assembleBlockchain()
+            comm.senddatafromclient(sample, client)
+
+            # if (message.lower() == "closed"):
+            #     comm.closesamaritanConnection(client)
+            #     exit(0)
+            # else:
+                #blockchain = block.assembleBlockchain()
+                #comm.write_to_block_file(message)
+                #comm.senddatafromclient(blockchain)
+            #received_iplist = request_iplist(client)
+            #message_refresh_iplist(iplist,received_list)
+            time.sleep(3) #rn iplist updates every second
+
+            message = comm.receivedatafromsamaritan(client)
+
+            if (message.lower() == "closed"):
+                 comm.closesamaritanConnection(client)
+                 exit(0)
+
+    except:
+        comm.clientOut.close() 
+
+def run_server():#self_samaritan_to_client, client_to_self_samaritan): #add func to talk to samaritan and samaritan to listen to server (listenServer)
+    global receiveport
+    global givenport
+    try:
+        comm.bindasServer(connectport, server)
+        comm.listenforRequests(connectport, server)
+
+        while(1):
+            # accept incoming connections
+
+                # accept incoming connections
+            requester = comm.acceptconnectportConnection(server) #sit waiting/ready for new clients
+            comm.receivedatafromrequester(requester)
+            comm.approveConnection(requester, givenport) #I tell client what port to talk to me on
+            receiveport = comm.setreceiveequal(givenport)
+            givenport = comm.incgiven(givenport)
+            comm.closerequesterConnection(requester)
+
+            if(1):
+                ppid = os.getpid()
+                print("Parent process PID:", ppid)
+                child_pid = os.fork()
+                if child_pid == 0:            #   This code is executed by the child process
+
+                    myip = comm.myIP()
+                    self_samaritan.bind((myip, receiveport)) 
+                    print(f"receiveport is: {receiveport}")
+
+                    self_samaritan.listen(0)
+                    neighbor = comm.acceptConnection(self_samaritan) #wait here for client's sustained request
+
+                    time.sleep(0.5)
+
+                    data = "BLOCKCHAIN"
+
+                    while(1):
+                        time.sleep(1)
+                        #if(not neighbor)
+                            #exit(0)
+                        #NEED ADMIN BLOCK
+                        
+                        blockchainMessage = assembleBlockchain()
+                        comm.senddatatoneighbor(neighbor, blockchainMessage)
+                        #data = "Server Data"
+                        #comm.senddatatoneighbor(neighbor, data)
+                        message = comm.receivedatafromneighbor(neighbor)
+                        #if(message == "requesting iplist."):
+                            #send_iplist(iplist)
+
+                    print("I am samaritan. Stopping my good works.")
+                    comm.closeneighborConnection(self_samaritan) #close my given port (my side sustained connection as their neighbor)
+
+                else:
+                    os.wait() #parent wait for child
+    except OSError:
+        print("OSerror")
 
 #FUNCTIONS
 def calculateHash(s):  #separate function for hashing
@@ -129,8 +285,8 @@ def generateGenesisBlock(): # generate_genesis_block creates the genesis block
 
 def generateBlock(oldBlock, address, transactionType, payload): # generate_block creates a new block using the previous block's hash
     t = str(datetime.now())
-    new_block = Block(oldBlock.index + 1, t, oldBlock.hash, address, transactionType, payload)
-    return new_block
+    newBlock = Block(oldBlock.index + 1, t, oldBlock.hash, address, transactionType, payload)
+    return newBlock
 
 def generateSampleBlocks():
     t = str(datetime.now())
@@ -526,3 +682,6 @@ def getBlockchain():
     # print(f"*getBlockchain* Last block index: {blockchain[-1].index}")
     return blockchain
 
+
+if __name__ == "__main__":
+    main()
