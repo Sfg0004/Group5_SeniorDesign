@@ -25,8 +25,8 @@ samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 self_samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 neighbor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 initial_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-connectport = 11356
-givenport = 12356
+connectport = 11369
+givenport = 12369
 
 #client ip address array
 nodelist = [] #local list of node objects
@@ -360,7 +360,7 @@ def main():
     
 
     
-    initial_samaritan_jointo_ip = "146.229.163.144"#input("Enter the IP of a node in the blockchain you want to join: ")
+    initial_samaritan_jointo_ip = "146.229.163.145"#input("Enter the IP of a node in the blockchain you want to join: ")
 
     threading.Thread(target=run_server, args=()).start()
     #initial_samaritan_jointo_ip = "146.229.163.149"
