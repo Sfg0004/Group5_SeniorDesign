@@ -379,17 +379,17 @@ def uploadIpfs(conn, validator): # is validator obj
     optionsAccessList = []
     accessList = []
 
-    io_write(conn, "RACL: " + str(returnedAccessList)+ "\n")
-    io_write(conn, "valdiator: " + str(validator.address) + " role: " + str(validator.role) + "\n")
-    io_write(conn, "user: " + str(returnedAccessList[0])+ " role: " + returnedRoleList[0]+"\n")
-    io_write(conn, "roles: " + str(returnedRoleList)+ "\n")
+    # io_write(conn, "RACL: " + str(returnedAccessList)+ "\n")
+    # io_write(conn, "valdiator: " + str(validator.address) + " role: " + str(validator.role) + "\n")
+    # io_write(conn, "user: " + str(returnedAccessList[0])+ " role: " + returnedRoleList[0]+"\n")
+    # io_write(conn, "roles: " + str(returnedRoleList)+ "\n")
 
 
     for user in range(len(returnedAccessList)):
         if returnedRoleList[user] == "p":
             optionsAccessList.append(returnedAccessList[user]) #list of paitent users only
 
-    io_write(conn, "OACL: " + str(optionsAccessList)+ "\n")
+    # io_write(conn, "OACL: " + str(optionsAccessList)+ "\n")
 
 
     if validator.address in optionsAccessList:  #when paitent uploads a file, only adds them and general dr role
@@ -438,9 +438,9 @@ def retrieveIpfs(conn, author): #author of download? i think...
     # io_write(conn, "valdiator: " + str(validator.address) + " role: " + str(validator.role) + "\n")
     # io_write(conn, "user: " + str(returnedAccessList[0])+ " role: " + returnedRoleList[0]+"\n")
 
-    io_write(conn, "RACL : " + str(returnedAccessList) + "\n")
-    userIndex = returnedAccessList.index(author)
-    io_write(conn, "userIndex: " + str(userIndex) + "\n")
+    # io_write(conn, "RACL : " + str(returnedAccessList) + "\n")
+    # userIndex = returnedAccessList.index(author)
+    # io_write(conn, "userIndex: " + str(userIndex) + "\n")
 
     if returnedRoleList[userIndex] == "p":
         paitent = True
@@ -451,7 +451,7 @@ def retrieveIpfs(conn, author): #author of download? i think...
     
     k = 0
     if (doctor == True) and (paitent == False):
-        io_write(conn, "doc\n")
+        # io_write(conn, "doc\n")
         # validNames = fileNamesRet
         # validHashes = ipfsHashesRet
         for file in fileNamesRet:
@@ -461,7 +461,7 @@ def retrieveIpfs(conn, author): #author of download? i think...
                 validNames.append(file)
             k+=1
     elif (doctor == False) and (paitent == True):
-        io_write(conn, "pait\n")
+        # io_write(conn, "pait\n")
         for file in fileNamesRet:
             if author in accessListRet[k]:
                 #if user == author:
@@ -479,7 +479,7 @@ def retrieveIpfs(conn, author): #author of download? i think...
     # io_write(conn, "valid names: "+ str(validNames)+"\n")
 
     if i<1:
-        io_write(conn, "no file access")
+        io_write(conn, "\nno file access\n")
 
     io_write(conn, "\n\nInput the number of your desired file: ")
 
@@ -562,7 +562,7 @@ def checkRole(conn, validator):
         if returnedRoleList[userIndex] == "a":
             return True
         else:
-            io_write(conn, "\nyou are not an admin (will run every time\n")
+            io_write(conn, "\nyou are not an admin (will run in checkRole every time)\n")
             return False
     else:
         return False
@@ -579,14 +579,28 @@ def createAccount(conn, validator):
         return 'error'
 
     io_write(conn, "\n\nEnter username: ")
-    username = conn.recv(1024).decode('utf-8').strip()
+    while(True):
+        username = conn.recv(1024).decode('utf-8').strip()
+        returnedUserList, roles = getUserList(conn, 1)
+        if username in returnedUserList:
+            io_write(conn, "Username not available. Enter new username: ")
+        else: 
+            break
+
     io_write(conn, "Enter password: ")
     password = conn.recv(1024).decode('utf-8').strip()
+    # should probably regEx for password but later problem
     io_write(conn, "[a] Admin\n")
     io_write(conn, "[d] Doctor\n")
     io_write(conn, "[p] Patient\n\n")
     io_write(conn, "Input a character to specify the role: ")
-    role = conn.recv(1024).decode('utf-8').strip().lower()
+    while(True):
+        role = conn.recv(1024).decode('utf-8').strip().lower()
+        if((role == "a") or (role == "d") or (role == "p")):
+            break
+        else:
+            io_write(conn, "Invalid input. Please make valid selection: ")
+
     io_write(conn, "Enter user's legal name: ")
     name = conn.recv(1024).decode('utf-8').strip()
     io_write(conn, "Account created!")
@@ -615,16 +629,16 @@ def updateUserAccount(conn, validator):
     # io_write(conn, "valdiator: " + str(validator.address) + " role: " + str(validator.role) + "\n")
     # io_write(conn, "user: " + str(returnedAccessList[0])+ " role: " + returnedRoleList[0]+"\n")
 
-    io_write(conn, "RACL : " + str(returnedAccessList) + "\n")
-    userIndex = returnedAccessList.index(validator.address)
-    io_write(conn, "userIndex: " + str(userIndex) + "\n")
+    # io_write(conn, "RACL : " + str(returnedAccessList) + "\n")
+    # userIndex = returnedAccessList.index(validator.address)
+    # io_write(conn, "userIndex: " + str(userIndex) + "\n")
 
     if returnedRoleList[userIndex] == "a":
         paitent = False
         doctor = False
         admin = True
     else:
-        io_write(conn, "\nyou do not have permission, how did you get here?\n")
+        io_write(conn, "\nyou do not have permission updateUserAccount\n")
         return 'error'
 
     io_write(conn, "Available Users: \n")
@@ -659,7 +673,12 @@ def updateUserAccount(conn, validator):
         io_write(conn, "[d] Doctor\n")
         io_write(conn, "[p] Patient\n\n")
         io_write(conn, "Input a character to specify the role: ")
-        role = conn.recv(1024).decode('utf-8').strip().lower()
+        while(True):
+            role = conn.recv(1024).decode('utf-8').strip().lower()
+            if(role == ("a" or "d" or "p")):
+                break
+            else:
+                io_write(conn, "Invalid input. Please make valid selection: ")
 
         if (editUserRole == "a") and (role != "a"):
             numAdmins = returnedRoleList.count("a")
@@ -684,7 +703,7 @@ def updateUserAccount(conn, validator):
             if block.payload.username == editUsername:
                 block.payload.role = role
                 io_write(conn, "updated user: "+ str(block.payload.username)+" role: "+ str(block.payload.role)+ "\n")
-                io_write(conn, "pass: "+ str(block.payload.password)+" name: "+ str(block.payload.fullLegalName)+ "\n")
+                # io_write(conn, "pass: "+ str(block.payload.password)+" name: "+ str(block.payload.fullLegalName)+ "\n")
 
                 updatedAccount = Account(editUsername, block.payload.password, role, block.payload.fullLegalName)
             else:
@@ -908,7 +927,7 @@ def main():
         #ip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr']
         ip = ni.ifaddresses('eth0')[ni.AF_INET][0]['addr']
         print("my ip: " + ip + "\n")
-        port = 5555
+        port = 5556
         server.bind((ip, port))
         server.listen()
         print("Server is running.")
