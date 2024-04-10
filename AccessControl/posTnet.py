@@ -107,7 +107,7 @@ def generate_sample_blocks():
     accessList = []
     blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmRB39JYBwEqfpDJ5czsBpxrBtwXswTB4HUiiyvhS1b7ii", "chest_xray.png", "Genesis", ["admin", "mes0063"])))
     blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmeUp1ciEQnKo9uXLi1SH3V6Z6YQHtMHRgMbzNLaHt6gJH", "Patient Info.txt", "Genesis", ["admin"])))
-    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmeuNtvAJT8HMPgzEyuHCnWiMQkpwHBtAEHmzH854TqJXW", "RADRPT 08-13-2023.pdf", "Genesis", ["mes0063, role:d"])))
+    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmeuNtvAJT8HMPgzEyuHCnWiMQkpwHBtAEHmzH854TqJXW", "RADRPT 08-13-2023.pdf", "Genesis", ["mes0063", "role:d"])))
     blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmYRJY3Uq8skTrREx7aFkE7Ym7hXA6bk5pqJE9gWrhFB6n", "Project Timeline.pdf", "Genesis", ["dr"])))
 
 # user input handling for admin menu
@@ -192,6 +192,24 @@ def handleAccessListInput(conn, max_num):
     return choice
 
 
+def handleUserUpdateInput(conn, max_num):
+    notValid = True     # validity flag to break loop
+    while notValid:
+        try:
+            choice = conn.recv(1024).decode('utf-8').strip()    # take user's input
+            choice = int(choice)-1                           # try to convert to int; if not int, go to exception
+            if choice >= 0 and choice < max_num:                # make sure choice is in range
+                notValid = False
+            else:                                               # if input is out of range:
+                io_write(conn, "Invalid input. Try again: ")    #   give error message
+        except ValueError:                                      # if input is not an int:
+            if (choice.lower() == "q") and (max_num < 5):       #   check to see if it's "q" (specifically for main menu)
+                notValid = False
+                choice = 0                                      #   convert choice to 4
+            else:                                               # if not q:
+                io_write(conn, "Invalid input. Try again: ")    #   give error message
+    return choice
+
 def handleLoginInput(conn):
     notValid = True     # validity flag to break loop
     while notValid:
@@ -227,15 +245,15 @@ def userInput(conn, validator):
             payload = uploadIpfs(conn, validator)
             transactionType = "Upload"
         elif choice == 1:
-            io_write(conn, "Downloading File...")
-            payload = retrieveIpfs(conn, validator.address)
-            transactionType = "Download"
+            io_write(conn, "Update User Account...")
+            payload = updateUserAccount(conn, validator)
+            transactionType = "Update_User"
         elif choice == 2:
             io_write(conn, "Creating Account...")
             payload = createAccount(conn)
             transactionType = "Create_Account"
         elif choice == 3:
-            io_write(conn, "Listing Users...")
+            io_write(conn, "Listing Users...\n")
             payload = "User list"
             users = getUserList(conn, 0)
             transactionType = "List_Users"
@@ -424,8 +442,14 @@ def retrieveIpfs(conn, author): #author of download? i think...
     k = 0
     if (doctor == True) and (paitent == False):
         io_write(conn, "doc\n")
-        validNames = fileNamesRet
-        validHashes = ipfsHashesRet
+        # validNames = fileNamesRet
+        # validHashes = ipfsHashesRet
+        for file in fileNamesRet:
+            if (author in accessListRet[k]) or ("role:d" in accessListRet[k]):
+                #if user == author:
+                validHashes.append(ipfsHashesRet[k])
+                validNames.append(file)
+            k+=1
     elif (doctor == False) and (paitent == True):
         io_write(conn, "pait\n")
         for file in fileNamesRet:
@@ -448,8 +472,9 @@ def retrieveIpfs(conn, author): #author of download? i think...
         io_write(conn, "no file access")
 
     io_write(conn, "\n\nInput the number of your desired file: ")
-    choice = handleDownloadInput(conn, len(ipfsHashesRet))
 
+
+    choice = handleDownloadInput(conn, len(ipfsHashesRet))
     hash = validHashes[choice]
     url = "https://ipfs.moralis.io:2053/ipfs/" + hash + "/uploaded_file"	#does the url to retrieve the file from IPFS
     r = requests.get(url, allow_redirects=True)
@@ -502,9 +527,10 @@ def getUserList(conn, typeChoice):
 
     # io_write(conn, "max num = " + str(len(userList)))
 
-    if typeChoice == 1:
+    
+    if typeChoice == 1: # return user and role list
         return userList, roleList
-    if typeChoice == 0:
+    elif typeChoice == 0: #return user list and print users
         for name in userList:
             io_write(conn, "[" + str(i) + "] " + name + "\n")
             i += 1
@@ -526,10 +552,91 @@ def createAccount(conn):
 
     newAccount = Account(username, password, role, name)
     return newAccount
+
+def updateUserAccount(conn, validator):
+    # '''
+    # admin selects option in their menu to update user information
+    # print list of users
+    # select user to edit
+    # select what to change (role)
+    # select new role
+    # update account object (?)
+    # return to main menu (return new account?)
+    # -- how take info from old block and create new block to always associate with new role?
+    # '''
+    doctor = False
+    paitent = False
+    admin = False
+    returnedAccessList = []
+    returnedRoleList = []
+    returnedAccessList, returnedRoleList = getUserList(conn, 1) # pass 1 to select no print
+    # io_write(conn, "RACL: " + str(returnedAccessList)+ "\n")
+    # io_write(conn, "valdiator: " + str(validator.address) + " role: " + str(validator.role) + "\n")
+    # io_write(conn, "user: " + str(returnedAccessList[0])+ " role: " + returnedRoleList[0]+"\n")
+
+    io_write(conn, "RACL : " + str(returnedAccessList) + "\n")
+    userIndex = returnedAccessList.index(validator.address)
+    io_write(conn, "userIndex: " + str(userIndex) + "\n")
+
+    if returnedRoleList[userIndex] == "a":
+        paitent = False
+        doctor = False
+        admin = True
+    else:
+        io_write(conn, "you do not have permission, how did you get here?")
+        return ["error"]
+    
+    io_write(conn, "Available Users: \n")
+    i = 1
+    for user in returnedAccessList:
+        io_write(conn, "[" + str(i) + "] " + user + "\n")
+        i += 1
+
+    io_write(conn, "\n\nInput the number of your desired file: ")
+
+
+    choice = handleUserUpdateInput(conn, len(returnedAccessList))
+
+    # io_write(conn, "choice: " + str(choice)+ "\n")
+
+    editUsername = returnedAccessList[choice]
+    editUserRole = returnedRoleList[returnedAccessList.index(editUsername)]
+
+    io_write(conn, "Select Action: ")
+    # io_write(conn, "[1] Change User Role\n")
+    io_write(conn, "Changing role for " + editUsername+ "\n")
+    io_write(conn, "Current role: " + editUserRole+ "\n")
+    io_write(conn, "Select new role: \n")
+    io_write(conn, "[a] Admin\n")
+    io_write(conn, "[d] Doctor\n")
+    io_write(conn, "[p] Patient\n\n")
+    io_write(conn, "Input a character to specify the role: ")
+    role = conn.recv(1024).decode('utf-8').strip().lower()
+    io_write(conn, "User account " + editUsername + " has new role " + role + "\n")
+
+    # NEED to update the object (no idea how to do this)
+    # did something for this^^ not sure if best/good way at all but works(??)
+    # if making changes maybe have running global user list like for blockchain
+    # if making major changes, return user/role as dict to prevent having to do two
+    #     lists and find the matching indexes
+    for block in blockchain:
+        if block.index == 0:
+            continue
+        if block.transactionType == "Create_Account":
+            if block.payload.username == editUsername:
+                block.payload.role = role
+                io_write(conn, "updated user: "+ str(block.payload.username)+" role: "+ str(block.payload.role)+ "\n")
+            else:
+                continue
+    
+    # io_write(conn, "done\n")
+    
+    return "edited"
+
     
 def printAdminMenu(conn):
     io_write(conn, "\n[1] Upload File\n")
-    io_write(conn, "[2] Download File\n")
+    io_write(conn, "[2] Update User Information\n")
     io_write(conn, "[3] Create Account\n")
     io_write(conn, "[4] List Users\n")
     io_write(conn, "[q] Log Out\n")
@@ -728,9 +835,9 @@ def main():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         #this now allows for connections across computers
-        ip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr']
+        ip = ni.ifaddresses('eth0')[ni.AF_INET][0]['addr']
         print("my ip: " + ip + "\n")
-        port = 5556
+        port = 5555
         server.bind((ip, port))
         server.listen()
         print("Server is running.")
