@@ -105,8 +105,8 @@ def generate_sample_blocks():
     address = ""
     address = calculate_hash(t)
     accessList = []
-    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmRB39JYBwEqfpDJ5czsBpxrBtwXswTB4HUiiyvhS1b7ii", "chest_xray.png", "Genesis", ["admin", "mes0063"])))
-    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmeUp1ciEQnKo9uXLi1SH3V6Z6YQHtMHRgMbzNLaHt6gJH", "Patient Info.txt", "Genesis", ["admin"])))
+    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmRB39JYBwEqfpDJ5czsBpxrBtwXswTB4HUiiyvhS1b7ii", "chest_xray.png", "Genesis", ["mes0063"])))
+    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmeUp1ciEQnKo9uXLi1SH3V6Z6YQHtMHRgMbzNLaHt6gJH", "Patient Info.txt", "Genesis", ["role:d"])))
     blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmeuNtvAJT8HMPgzEyuHCnWiMQkpwHBtAEHmzH854TqJXW", "RADRPT 08-13-2023.pdf", "Genesis", ["mes0063", "role:d"])))
     blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmYRJY3Uq8skTrREx7aFkE7Ym7hXA6bk5pqJE9gWrhFB6n", "Project Timeline.pdf", "Genesis", ["dr"])))
 
@@ -233,34 +233,42 @@ def handleLoginInput(conn):
 def userInput(conn, validator):
     payload = "not_determined"
     transactionType = "not_determined"
+    io_write(conn, "\nuser input -> validator role: "+ str(validator.role)+"\n")
 
-    if (validator.role == "a"):   # If validator is an admin: 
+    roleAdmin = checkRole(conn, validator)
+
+    if (roleAdmin):   # If validator is an admin, checkRole returns True: 
         printAdminMenu(conn)
         io_write(conn, "Input 1, 2, 3, 4, or q to log out: ")
         
         choice = handleAdminInput(conn)
 
-        if choice == 0:
-            io_write(conn, "Uploading File...\n")
-            payload = uploadIpfs(conn, validator)
-            transactionType = "Upload"
-        elif choice == 1:
-            io_write(conn, "Update User Account...")
-            payload = updateUserAccount(conn, validator)
-            transactionType = "Update_User"
-        elif choice == 2:
-            io_write(conn, "Creating Account...")
-            payload = createAccount(conn)
-            transactionType = "Create_Account"
-        elif choice == 3:
-            io_write(conn, "Listing Users...\n")
-            payload = "User list"
-            users = getUserList(conn, 0)
-            transactionType = "List_Users"
-        elif choice == 4:
-            io_write(conn, "Logging Out...")
-            payload = validator # might need to be validator for log out block??
-            transactionType = "Log_Out"
+        if (checkRole(conn, validator)):
+            if choice == 0:
+                io_write(conn, "Uploading File change this!!...\n")
+                payload = uploadIpfs(conn, validator)
+                transactionType = "Upload"
+            elif choice == 1:
+                io_write(conn, "Update User Account...")
+                payload = updateUserAccount(conn, validator)
+                transactionType = "Update_User"
+            elif choice == 2:
+                io_write(conn, "Creating Account...")
+                payload = createAccount(conn, validator)
+                transactionType = "Create_Account"
+            elif choice == 3:
+                io_write(conn, "Listing Users...\n")
+                transactionType = "List_Users"
+                payload = "User list"
+                users = getUserList(conn, 0)
+            elif choice == 4:
+                io_write(conn, "Logging Out...")
+                payload = validator # might need to be validator for log out block??
+                transactionType = "Log_Out"
+        else:
+            io_write(conn, "access error\n")
+            transactionType = "Access_Error"
+            payload = validator
     
     elif (validator.address == '') and (validator.balance == '') and (validator.role =='') and (validator.fullLegalName == ''):
         printLoginMenu(conn) # menu to be printed before account is logged in/when logged out
@@ -342,7 +350,8 @@ def createValidator(conn, accountObj):
     with validator_lock:
         validators.append(newValidator)
         for validator in validators:
-            print(f"{validator.address} : {validator.balance}")             
+            print(f"{validator.address} : {validator.balance}")   
+          
 
     return newValidator
 
@@ -370,22 +379,23 @@ def uploadIpfs(conn, validator): # is validator obj
     optionsAccessList = []
     accessList = []
 
-    # io_write(conn, "RACL: " + str(returnedAccessList)+ "\n")
-    # io_write(conn, "valdiator: " + str(validator.address) + " role: " + str(validator.role) + "\n")
-    # io_write(conn, "user: " + str(returnedAccessList[0])+ " role: " + returnedRoleList[0]+"\n")
+    io_write(conn, "RACL: " + str(returnedAccessList)+ "\n")
+    io_write(conn, "valdiator: " + str(validator.address) + " role: " + str(validator.role) + "\n")
+    io_write(conn, "user: " + str(returnedAccessList[0])+ " role: " + returnedRoleList[0]+"\n")
+    io_write(conn, "roles: " + str(returnedRoleList)+ "\n")
 
 
     for user in range(len(returnedAccessList)):
         if returnedRoleList[user] == "p":
             optionsAccessList.append(returnedAccessList[user]) #list of paitent users only
 
-    #io_write(conn, "OACL: " + str(optionsAccessList)+ "\n")
+    io_write(conn, "OACL: " + str(optionsAccessList)+ "\n")
 
 
-    if validator.role == "p":  #when paitent uploads a file, only adds them and general dr role
+    if validator.address in optionsAccessList:  #when paitent uploads a file, only adds them and general dr role
         accessList.append(validator.address)
         accessList.append('role:d')
-    elif validator.role == "d":    
+    elif returnedRoleList[returnedAccessList.index(validator.address)] == "d":    
         io_write(conn, "\n\nSelect Paitent to file:\n")
         
         i = 1
@@ -400,14 +410,14 @@ def uploadIpfs(conn, validator): # is validator obj
         accessList.append('role:d')
         #io_write(conn, "ok done then\n")
         # add secondary approval ie print accessList and select this it is correct
-        io_write(conn, "users: " + str(accessList) + " \n")
     else:
         io_write(conn, "you do not have permission to upload files, contact administrator")
         
     
     #-------------------------------------------------------------------------------------------
     newFileData = FileData(hash, fileName, validator, accessList)
-
+    io_write(conn, "\nFile has been uploaded\n")
+    io_write(conn, "accessing users: " + str(accessList) + " \n")
     return newFileData
 
 def retrieveIpfs(conn, author): #author of download? i think...
@@ -536,7 +546,38 @@ def getUserList(conn, typeChoice):
             i += 1
         return userList
 
-def createAccount(conn):
+def checkRole(conn, validator):
+    returnedAccessList = []
+    returnedRoleList = []
+    returnedAccessList, returnedRoleList = getUserList(conn, 1) # pass 1 to select no print
+    # io_write(conn, "RACL: " + str(returnedAccessList)+ "\n")
+    # io_write(conn, "valdiator: " + str(validator.address) + " role: " + str(validator.role) + "\n")
+    # io_write(conn, "user: " + str(returnedAccessList[0])+ " role: " + returnedRoleList[0]+"\n")
+
+    # io_write(conn, "RACL : " + str(returnedAccessList) + "\n")
+
+    if(validator.address in returnedAccessList):
+        userIndex = returnedAccessList.index(validator.address)
+        #io_write(conn, "userIndex: " + str(userIndex) + "\n")
+        if returnedRoleList[userIndex] == "a":
+            return True
+        else:
+            io_write(conn, "\nyou are not an admin (will run every time\n")
+            return False
+    else:
+        return False
+
+
+
+def createAccount(conn, validator):
+    if validator.role == "a":
+        paitent = False
+        doctor = False
+        admin = True
+    else:
+        io_write(conn, "\nyou do not have permission, how did you get here?\n")
+        return 'error'
+
     io_write(conn, "\n\nEnter username: ")
     username = conn.recv(1024).decode('utf-8').strip()
     io_write(conn, "Enter password: ")
@@ -583,9 +624,9 @@ def updateUserAccount(conn, validator):
         doctor = False
         admin = True
     else:
-        io_write(conn, "you do not have permission, how did you get here?")
-       return 'error'
-    
+        io_write(conn, "\nyou do not have permission, how did you get here?\n")
+        return 'error'
+
     io_write(conn, "Available Users: \n")
     i = 1
     for user in returnedAccessList:
@@ -694,6 +735,8 @@ def printBlockchain():
             elif block.transactionType == "Update_User":
                 if block.payload == 'error':
                     print("Status: access denied")
+            elif block.transactionType == "Access_Error":
+                print("Status: Access Error")
             else:
                 print("Username: " + block.payload.username)
                 print("Password: " + block.payload.password)
@@ -750,7 +793,11 @@ def main_client_loop(conn):
                 if transactionType == "Log_Out":
                     loggedIn = False
                     break
-
+                # if transactionType == "Update_User":
+                #     io_write(conn, "p.u: "+ str(payload.username)+ " v.a: " + str(validator.address)+ "\n")
+                #     if (payload != "error") and (payload.username == validator.address):
+                #         validator.role = payload.role
+                
                 payload, transactionType = userInput(conn, validator)
             
             if payload == "not_determined":
@@ -843,7 +890,7 @@ def main():
     address = ""
     blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("admin", "admin", "a", "Admin")))
     blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("mes0063", "pass", "p", "mes")))
-    blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("dr", "dr", "d", "doctor")))
+    blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("dr", "dr", "a", "doctor")))
     blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("cwc", "cwc", "p", "cwc")))
     
 
@@ -858,7 +905,8 @@ def main():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         #this now allows for connections across computers
-        ip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr']
+        #ip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr']
+        ip = ni.ifaddresses('eth0')[ni.AF_INET][0]['addr']
         print("my ip: " + ip + "\n")
         port = 5555
         server.bind((ip, port))
