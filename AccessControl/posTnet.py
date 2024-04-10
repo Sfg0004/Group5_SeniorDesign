@@ -584,7 +584,7 @@ def updateUserAccount(conn, validator):
         admin = True
     else:
         io_write(conn, "you do not have permission, how did you get here?")
-        return ["error"]
+       return 'error'
     
     io_write(conn, "Available Users: \n")
     i = 1
@@ -592,27 +592,44 @@ def updateUserAccount(conn, validator):
         io_write(conn, "[" + str(i) + "] " + user + "\n")
         i += 1
 
-    io_write(conn, "\n\nInput the number of your desired file: ")
+    while(True):
+        io_write(conn, "\n\nInput the number of your desired file: ")
 
+        choice = handleUserUpdateInput(conn, len(returnedAccessList))
+        #io_write(conn, "choice" + str(choice)+ "\n")
 
-    choice = handleUserUpdateInput(conn, len(returnedAccessList))
+        if returnedAccessList[choice] == validator.address:
+            io_write(conn, "\nyou cannot change your own role, please contact administrator\n")
+        else:
+            break
 
     # io_write(conn, "choice: " + str(choice)+ "\n")
 
     editUsername = returnedAccessList[choice]
     editUserRole = returnedRoleList[returnedAccessList.index(editUsername)]
 
-    io_write(conn, "Select Action: ")
-    # io_write(conn, "[1] Change User Role\n")
-    io_write(conn, "Changing role for " + editUsername+ "\n")
-    io_write(conn, "Current role: " + editUserRole+ "\n")
-    io_write(conn, "Select new role: \n")
-    io_write(conn, "[a] Admin\n")
-    io_write(conn, "[d] Doctor\n")
-    io_write(conn, "[p] Patient\n\n")
-    io_write(conn, "Input a character to specify the role: ")
-    role = conn.recv(1024).decode('utf-8').strip().lower()
-    io_write(conn, "User account " + editUsername + " has new role " + role + "\n")
+    while(True):
+        io_write(conn, "Select Action: ")
+        # io_write(conn, "[1] Change User Role\n")
+        io_write(conn, "Changing role for " + editUsername+ "\n")
+        io_write(conn, "Current role: " + editUserRole+ "\n")
+        io_write(conn, "Select new role: \n")
+        io_write(conn, "[a] Admin\n")
+        io_write(conn, "[d] Doctor\n")
+        io_write(conn, "[p] Patient\n\n")
+        io_write(conn, "Input a character to specify the role: ")
+        role = conn.recv(1024).decode('utf-8').strip().lower()
+
+        if (editUserRole == "a") and (role != "a"):
+            numAdmins = returnedRoleList.count("a")
+            if numAdmins > 1:
+                io_write(conn, "User account " + editUsername + " has new role " + role + "\n")
+                break
+            else: 
+                io_write(conn, "please assign an admin role before removing the admin\n")
+        else:
+            break
+       
 
     # NEED to update the object (no idea how to do this)
     # did something for this^^ not sure if best/good way at all but works(??)
@@ -626,16 +643,19 @@ def updateUserAccount(conn, validator):
             if block.payload.username == editUsername:
                 block.payload.role = role
                 io_write(conn, "updated user: "+ str(block.payload.username)+" role: "+ str(block.payload.role)+ "\n")
+                io_write(conn, "pass: "+ str(block.payload.password)+" name: "+ str(block.payload.fullLegalName)+ "\n")
+
+                updatedAccount = Account(editUsername, block.payload.password, role, block.payload.fullLegalName)
             else:
                 continue
     
     # io_write(conn, "done\n")
     
-    return "edited"
+    return updatedAccount
 
     
 def printAdminMenu(conn):
-    io_write(conn, "\n[1] Upload File\n")
+    io_write(conn, "\n[1] Delete User Account??\n")
     io_write(conn, "[2] Update User Information\n")
     io_write(conn, "[3] Create Account\n")
     io_write(conn, "[4] List Users\n")
@@ -671,6 +691,9 @@ def printBlockchain():
                 print("Status: Successful")
             elif block.transactionType == "Log_Out":
                 print("Status: Successful")
+            elif block.transactionType == "Update_User":
+                if block.payload == 'error':
+                    print("Status: access denied")
             else:
                 print("Username: " + block.payload.username)
                 print("Password: " + block.payload.password)
@@ -835,7 +858,7 @@ def main():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         #this now allows for connections across computers
-        ip = ni.ifaddresses('eth0')[ni.AF_INET][0]['addr']
+        ip = ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr']
         print("my ip: " + ip + "\n")
         port = 5555
         server.bind((ip, port))
