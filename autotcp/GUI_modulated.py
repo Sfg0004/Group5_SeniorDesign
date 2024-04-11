@@ -112,6 +112,12 @@ downloadBG = "#615eff"
 
 isLoggedIn = False
 
+# store the IP to connect to
+connectIP = ""
+hasInputtedIP = False
+
+accountNames = []
+
 def calculateHash(s):  # Added this function
     h = hashlib.sha256()
     h.update(s.encode('utf-8'))
@@ -160,6 +166,32 @@ def getDimensions(root):
     h = root.winfo_height()
     return w, h
 
+def createWelcomeScene(root):
+    welcomeScene = Frame(root, bg=loginBG, name='welcomeScene')
+    w, h = getDimensions(root)
+
+    # main label at top center
+    welocmeLabel = Label(welcomeScene, text="Welcome!", font=font.Font(size=20))
+    welocmeLabel.place(anchor="c", relx=.5, rely=.05)
+
+    # username label & entry box
+    ipInput = StringVar()
+    ipLabel = Label(welcomeScene, text="IP:", font=('Arial', 12))
+    ipLabel.place(anchor="c", rely=.4, relx=.35)
+    ipEntryBox = Entry(welcomeScene, textvariable=ipInput, font=('Arial', 12))
+    ipEntryBox.place(anchor="c", rely=.4, relx=.55)
+
+    # IP connect button
+    connectButton = Button(welcomeScene, text="Connect", name="connectButton", command=lambda: getIP(ipInput.get(), root))
+    connectButton.place(anchor="c", relx=.5, rely=.75)
+
+    # status label
+    statusLabel = Label(welcomeScene, text="", name="statusLabel", font=('Arial', 14), fg="red", bg=loginBG)
+    statusLabel.place(anchor="c", relx=.5, rely=.6)
+
+    welcomeScene.place(anchor="c", relx=.5, rely=.5, width=w, height=h)
+    return welcomeScene
+
 def createLoginScene(root):    
     loginScene = Frame(root, bg=loginBG, name='loginScene')
     w, h = getDimensions(root)
@@ -190,6 +222,10 @@ def createLoginScene(root):
     statusLabel = Label(loginScene, text="", name="statusLabel", font=('Arial', 14), fg="red", bg=loginBG)
     statusLabel.place(anchor="c", relx=.5, rely=.6)
 
+    # ip label
+    ipLabel = Label(loginScene, text="", name="ipLabel", font=('Arial', 12))
+    ipLabel.place(anchor="c", relx=.5, rely=.15)
+
     loginScene.place(anchor="c", relx=.5, rely=.5, width=w, height=h)
     return loginScene
 
@@ -211,11 +247,19 @@ def createAdminMenu(root):
 
     # view blockchain button
     viewBlockchainButton = Button(adminPage, text="View Blockchain", name="viewBlockchainButton")
-    viewBlockchainButton.place(anchor="c", relx=.5, rely=.55)
+    viewBlockchainButton.place(anchor="c", relx=.5, rely=.525)
+
+    # view account names button
+    viewAccountNamesButton = Button(adminPage, text="View Account Names", name="viewAccountNamesButton", command=lambda: handleListAccountsButton(root))
+    viewAccountNamesButton.place(anchor="c", relx=.5, rely=.6)
 
     # logout button
     logoutButton = Button(adminPage, text="Logout", name="logoutButton", command=lambda: logout(root))
     logoutButton.place(anchor="c", relx=.5, rely=.75)
+
+    # ip label
+    ipLabel = Label(adminPage, text="", name="ipLabel", font=('Arial', 12))
+    ipLabel.place(anchor="c", relx=.5, rely=.15)
 
     adminPage.place(anchor="c", relx=.5, rely=.5, width=w, height=h)
     return adminPage
@@ -247,6 +291,10 @@ def createGenericMenu(root):
     # logout button
     logoutButton = Button(genericMenu, text="Logout", name="logoutButton")
     logoutButton.place(anchor="c", relx=.5, rely=.75)
+
+    # ip label
+    ipLabel = Label(genericMenu, text="", name="ipLabel", font=('Arial', 12))
+    ipLabel.place(anchor="c", relx=.5, rely=.15)
 
     genericMenu.place(anchor="c", relx=.5, rely=.5, width=w, height=h)
     return genericMenu
@@ -369,8 +417,25 @@ def handleDownloadButton(root):
     root.children["downloadMenu"].children["fileCombobox"].configure(values=fileNames)
     switchScenes(root.children["genericMenu"], root.children["downloadMenu"])
 
+def handleListAccountsButton(root):
+    getAccountNames()
+
+    labelText = "###########################\n\n"
+    index = 1
+    for name in accountNames:
+        labelText += f"  {index}. {name}   \n\n"
+        index += 1
+    labelText += "###########################\n\n"
+
+    popUp = Toplevel(root)
+    popUp.geometry = "400x400"
+    popUp.title = f"All Account Names"
+    blockLabel = Label(popUp, text=labelText, font=('Arial', 12), name="accountLabel", justify=LEFT)
+    blockLabel.pack(pady=20, side=TOP, anchor="w")
+
 def setScenes():
     print("Creating scenes...")
+    welcomeScene = createWelcomeScene(root)
     loginScene = createLoginScene(root)
     adminScene = createAdminMenu(root)
     createAccountScene = createCreateAccountMenu(root)
@@ -389,7 +454,8 @@ def setScenes():
         hideScene(child)
 
     root.protocol("WM_DELETE_WINDOW", onClosing)
-    showScene(loginScene)
+    showScene(welcomeScene)
+    # showScene(loginScene)
     return root
 
 def showScene(scene):
@@ -443,6 +509,20 @@ def createFirstBlocks():
     address = ""
     blockchain.append(generateBlock(blockchain[-1], address, "Create_Account", Account("admin", "admin", "a", "Admin")))
     # generateSampleBlocks()
+
+def getIP(ipInput, root):
+    global connectIP
+    global hasInputtedIP
+    connectIP = ipInput
+    print(f"Connect IP is {connectIP}")
+
+    # update IP labels on all relevant scenes
+    for scene in root.children.values():
+        for child in scene.children.keys():
+            if child == "ipLabel":
+                scene.children[child].configure(text=f"Connect IP: {connectIP}")
+    switchScenes(root.children["welcomeScene"], root.children["loginScene"])
+    hasInputtedIP = True
 
 def login(username, password, root):
     global validator
@@ -645,6 +725,15 @@ def getFileList():
     
     return ipfsHashes, fileNames
 
+def getAccountNames():
+    global accountNames
+
+    accountNames = []
+
+    for block in blockchain:
+        if block.transactionType == "Create_Account":
+            accountNames.append(block.payload.username)
+
 def addToCandidateBlocks(transactionType, payload):
     oldLastIndex = blockchain[-1]
     newBlock = generateBlock(oldLastIndex, validator.address, transactionType, payload)
@@ -674,6 +763,9 @@ def removeCandidateBlock(blockToRemove):
 
 def getGUIAccount():
     return GUIAccount
+
+def GUIgetIP():
+    return connectIP
 
 def main():
     createFirstBlocks()
