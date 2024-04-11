@@ -37,17 +37,6 @@ initial_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 connectport = 11410
 givenport = 12410
 
-# self_samaritan_to_client = Queue()
-# client_to_self_samaritan = Queue()
-
-# client_to_server = Queue()
-# server_to_client = Queue()
-
-# server_to_self_samaritan = Queue()
-# self_samaritan_to_server = Queue()
-
-# server_input_to_server = Queue()
-
 # BLOCK.PY CLASSES
 class Validator:
     def __init__(self, balance, account): # account is an Account object!
@@ -184,30 +173,20 @@ def main():
     
 
 def run_client(initial_samaritan_jointo_ip,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server):#self_samaritan_to_client,client_to_self_samaritan): #needs periodic ip requesting(checking) added
-   # original_stdout = sys.stdout
-    
-    #with open('clientOut.txt', 'w') as clientOut:
-    #sys.stdout = clientOut
-    #neighbor_ip = "146.229.163.144"  # replace with the neighbor's(server's) IP address
-    #connect_port = 11113 #neighbor's (server's) port
     comm.write_to_client_out("debug, in client\n")
     
     # Waiting for a connection with someone. If no immediate connection, then I am the first.
     # Because I am the first, I create the blockchain.
     while(1):
-        #try:
-            #samaritan_ip, samaritan_port = comm.requestConnection(initial_samaritan_jointo_ip, connectport, initial_client, givenport)
-            #comm.write_to_client_out ("server accepted my client connection. hooray!")
-            #break
-        #except:
-        comm.write_to_client_out("I am client. My request to connect to a server failed.")
-        while(not server_to_client.empty()):
-            #print("block found")
-            receivedblock = server_to_client.get()
-            #convertString(receivedblock)
-            blockchain.append(receivedblock)
-            # print("Printing blockchain woohoo!")
-            # printBlockchain()
+        try:
+            samaritan_ip, samaritan_port = comm.requestConnection(initial_samaritan_jointo_ip, connectport, initial_client, givenport)
+            comm.write_to_client_out ("server accepted my client connection. hooray!")
+            break
+        except:
+            comm.write_to_client_out("I am client. My request to connect to a server failed.")
+            while(not server_to_client.empty()):
+                receivedblock = server_to_client.get()
+                blockchain.append(receivedblock)
         
         
         if (len(blockchain) == 0):
@@ -241,7 +220,7 @@ def run_client(initial_samaritan_jointo_ip,self_samaritan_to_client,client_to_se
     try:
         while(1): #automatic close response present in receivedatafromserver
             #message = comm.receivedatafromsamaritan(client)
-            sample = "6789"
+            #sample = "6789"
             #print("I got the sample")
             
             #NEED ADMIN BLOCK
@@ -249,7 +228,9 @@ def run_client(initial_samaritan_jointo_ip,self_samaritan_to_client,client_to_se
             # block.blockchain.append(genesis_block)
             # block.generate_sample_blocks()
             # blockchain = block.assembleBlockchain()
-            comm.senddatafromclient(sample, client)
+            comm.senddatafromclient("requesting your blockchain", client)
+            recvd_chain = comm.receivedatafromsamaritan(client)
+            convertString(recvd_chain)
 
             # if (message.lower() == "closed"):
             #     comm.closesamaritanConnection(client)
@@ -262,11 +243,11 @@ def run_client(initial_samaritan_jointo_ip,self_samaritan_to_client,client_to_se
             #message_refresh_iplist(iplist,received_list)
             time.sleep(3) #rn iplist updates every second
 
-            message = comm.receivedatafromsamaritan(client)
+            #message = comm.receivedatafromsamaritan(client)
 
-            if (message.lower() == "closed"):
-                 comm.closesamaritanConnection(client)
-                 exit(0)
+            # if (message.lower() == "closed"):
+            #      comm.closesamaritanConnection(client)
+            #      exit(0)
 
     except:
         comm.clientOut.close() 
@@ -288,12 +269,12 @@ def run_server(validator,self_samaritan_to_client,client_to_self_samaritan,clien
                 
 
             # ******
-            # requester = comm.acceptconnectportConnection(server) #sit waiting/ready for new clients
-            # comm.receivedatafromrequester(requester)
-            # comm.approveConnection(requester, givenport) #I tell client what port to talk to me on
-            # receiveport = comm.setreceiveequal(givenport)
-            # givenport = comm.incgiven(givenport)
-            # comm.closerequesterConnection(requester)
+            requester = comm.acceptconnectportConnection(server) #sit waiting/ready for new clients
+            comm.receivedatafromrequester(requester)
+            comm.approveConnection(requester, givenport) #I tell client what port to talk to me on
+            receiveport = comm.setreceiveequal(givenport)
+            givenport = comm.incgiven(givenport)
+            comm.closerequesterConnection(requester)
             # ******
 
             if(1):
@@ -308,12 +289,12 @@ def run_server(validator,self_samaritan_to_client,client_to_self_samaritan,clien
 
                     # ******
                     myip = comm.myIP()
-                    # self_samaritan.bind((myip, receiveport)) 
-                    # print(f"receiveport is: {receiveport}")
+                    self_samaritan.bind((myip, receiveport)) 
+                    print(f"receiveport is: {receiveport}")
 
                     
-                    # self_samaritan.listen(0)
-                    # neighbor = comm.acceptConnection(self_samaritan) #wait here for client's sustained request
+                    self_samaritan.listen(0)
+                    neighbor = comm.acceptConnection(self_samaritan) #wait here for client's sustained request
                     # ******
 
                     time.sleep(0.5)
@@ -325,11 +306,18 @@ def run_server(validator,self_samaritan_to_client,client_to_self_samaritan,clien
                     # blockchain = block.assembleBlockchain()
 
                     while(1):
-                        time.sleep(1)
+                        time.sleep(1.5)
                         #if(not neighbor)
                             #exit(0)
+
+                        recvd_msg = comm.receivedatafromneighbor()
+
+                        if(recvd_msg == "requesting your blockchain"):
+                            blkstring = assembleBlockchain()
+                            comm.senddatatoneighbor(neighbor, blkstring)
+
                         #NEED ADMIN BLOCK
-                        while(1):
+                        while(not server_to_self_samaritan.empty()):
                             winner = server_to_self_samaritan.get() #blocking call
                             if(winner):
                                 blockchain.append(winner)
