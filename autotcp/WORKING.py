@@ -435,9 +435,10 @@ def run_server(parent_to_child,validator,self_samaritan_to_client,client_to_self
                                         indexes = []
                                         for approvedBlock in blockchain:
                                             indexes.append(approvedBlock.index)
-                                        if block.index in indexes:
+                                        if block.index in indexes: # account for forking
                                             newBlock = generateBlock(blockchain[-1], block.validatorName, block.transactionType, block.payload)
                                             blockchain.append(newBlock)
+                                            printBlockchain()
                                             server_to_self_samaritan.put(newBlock)
                                             # blk = assembleBlock(newBlock)
                                             # parent_to_child.put(blk)
@@ -446,6 +447,7 @@ def run_server(parent_to_child,validator,self_samaritan_to_client,client_to_self
 
                                         else:
                                             blockchain.append(block)
+                                            printBlockchain()
                                             server_to_self_samaritan.put(block)
                                             blk = assembleBlock(block)
                                             parent_to_child.put(blk)
