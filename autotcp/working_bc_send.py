@@ -34,8 +34,8 @@ samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 self_samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 neighbor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 initial_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-connectport = 11428
-givenport = 12428
+connectport = 11430
+givenport = 12430
 
 # BLOCK.PY CLASSES
 class Validator:
@@ -152,7 +152,7 @@ def main():
     parent_to_child = multiprocessing.Queue()
 
     #message_queue.Queue()  # create a Shared queue for communication
-    initial_samaritan_jointo_ip = "146.229.163.145"#input("Enter the IP of a node in the blockchain you want to join: ")
+    initial_samaritan_jointo_ip = "146.229.163.144"#input("Enter the IP of a node in the blockchain you want to join: ")
 
     time.sleep(1)
     
@@ -496,6 +496,17 @@ def runInput(server_input_to_server, validator):
             newFileData = uploadIPFS(validator)
             candidateBlock = addToCandidateBlocks("Upload", newFileData)
             server_input_to_server.put(candidateBlock)
+        elif choice == "2":
+            i = 1
+            print(f"\nLength of fileNames: {len(fileNames)}")
+            print(f"Available files:\n")
+            for name in fileNames:
+                print(f"[{i}] {name}")
+                i += 1
+            fileIndex = input("File choice: ")
+            newFileData = downloadIPFS(int(fileIndex) - 1, validator)
+            candidateBlock = addToCandidateBlocks("Download", newFileData)
+            server_input_to_server.put(candidateBlock)
 
 #
 #
@@ -540,6 +551,7 @@ def generateSampleBlocks():
     blockchain.append(generateBlock(blockchain[-1], address, "Upload", FileData("QmeUp1ciEQnKo9uXLi1SH3V6Z6YQHtMHRgMbzNLaHt6gJH", "Patient Info.txt", "Genesis", accessList)))
     blockchain.append(generateBlock(blockchain[-1], address, "Upload", FileData("QmeuNtvAJT8HMPgzEyuHCnWiMQkpwHBtAEHmzH854TqJXW", "RADRPT 08-13-2023.pdf", "Genesis", accessList)))
     blockchain.append(generateBlock(blockchain[-1], address, "Upload", FileData("QmYRJY3Uq8skTrREx7aFkE7Ym7hXA6bk5pqJE9gWrhFB6n", "Project Timeline.pdf", "Genesis", accessList)))
+    getFileList()
 
 def createFirstBlocks():
     genesisBlock = generateGenesisBlock()
@@ -706,7 +718,7 @@ def convertString(currentBlockchain):
                 role = blockDictionary['Role']
                 fullLegalName = "admin"
                 payload = Account(username, password, role, fullLegalName)
-            elif blockDictionary['Type'] == 'Upload':
+            elif (blockDictionary['Type'] == 'Upload') or (blockDictionary['Type'] == 'Download'):
                 print("I made it to upload")
                 ipfsHash = blockDictionary['IPFS_Hash']
                 fileName = blockDictionary['File_Name']
@@ -849,7 +861,7 @@ def uploadIPFS(validator): # root
 
     return newFileData
 
-def downloadIPFS(fileIndex):# , root def retrieveIpfs(conn, symmetricKey):
+def downloadIPFS(fileIndex, validator):# , root def retrieveIpfs(conn, symmetricKey):
     hash = ipfsHashes[fileIndex]
     url = "https://ipfs.moralis.io:2053/ipfs/" + hash + "/uploaded_file"	#does the url to retrieve the file from IPFS
     r = requests.get(url, allow_redirects=True)
