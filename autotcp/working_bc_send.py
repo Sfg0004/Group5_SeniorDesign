@@ -27,6 +27,8 @@ import re
 from moralis import evm_api
 import base64
 
+import errno
+
 # COMM.PY GLOBALS
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #new socket object
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
@@ -165,6 +167,7 @@ def main():
 
     """ BLOCK THREADS """
     # Handle candidate blocks in a separate thread
+    # Define the lambda function
     candidateThread = threading.Thread(target=lambda: candidateBlocks.append(None) if candidateBlocks else None)
     candidateThread.start()
 
@@ -267,11 +270,13 @@ def run_server(parent_to_child,validator,self_samaritan_to_client,client_to_self
     global givenport
     global blockchainMessage
     global blockchain
+    isValidAddress = False
     
+    comm.bindasServer(connectport, server)
+    comm.listenforRequests(connectport, server)
+    
+    time.sleep(0.5)
     try:
-        comm.bindasServer(connectport, server)
-        comm.listenforRequests(connectport, server)
-
         while(1):
             # accept incoming connections
 
@@ -291,7 +296,6 @@ def run_server(parent_to_child,validator,self_samaritan_to_client,client_to_self
 
             #parent_to_child = Queue()
 
-
             if(1):
                 ppid = os.getpid()
                 print("Parent process1 PID:", ppid)
@@ -300,28 +304,32 @@ def run_server(parent_to_child,validator,self_samaritan_to_client,client_to_self
                 if child_pid == 0:            #   This code is executed by the child process\
 
 
-                    #probab;y need a read for block 6
+                    #probably need a read for block 6
+                    while not isValidAddress:
+                        try:
+                            time.sleep(8)
+                            # print("I AM CHILD(SAMARITAN)")
 
-                    time.sleep(8)
-                    # print("I AM CHILD(SAMARITAN)")
+                            # ******
+                            myip = comm.myIP()
+                            self_samaritan.bind((myip, receiveport)) 
+                            print(f"receiveport is: {receiveport}")
 
-                    # ******
-                    myip = comm.myIP()
-                    self_samaritan.bind((myip, receiveport)) 
-                    print(f"receiveport is: {receiveport}")
+                            
+                            self_samaritan.listen(0)
+                            neighbor = comm.acceptConnection(self_samaritan) #wait here for client's sustained request
+                            # ******
 
-                    
-                    self_samaritan.listen(0)
-                    neighbor = comm.acceptConnection(self_samaritan) #wait here for client's sustained request
-                    # ******
+                            isValidAddress = True
+                        except OSError as e:
+                            print("\n*** OS error occurred:", e.strerror)
+                            print("Error code:", errno.errorcode[e.errno])
+                            print("Error arguments:", e.args)
+
 
                     time.sleep(0.5)
 
                     data = "BLOCKCHAIN"
-                    # genesisBlock = block.generateGenesisBlock()
-                    # block.blockchain.append(genesisBlock)
-                    # block.generateSampleBlocks()
-                    # blockchain = block.assembleBlockchain()
 
                     while(1):
                         time.sleep(4)
@@ -338,7 +346,7 @@ def run_server(parent_to_child,validator,self_samaritan_to_client,client_to_self
 
                             #testprintBlockchain()
                             while(parent_to_child.empty()):
-                                time.sleep(0.1)
+                                time.sleep(2)
                                 print(f"qsize: {parent_to_child.qsize()}")
                                 print("empty")
                             blockchain2 = parent_to_child.get()
@@ -356,29 +364,7 @@ def run_server(parent_to_child,validator,self_samaritan_to_client,client_to_self
                             #os.wait() #parent wait for child
 
                             print("Blockchain updated by server")
-                        # if block.changeFlag:
-                        # print(f"#1 Last block's index: {block.blockchain[-1].index}")
-                        # blockchain = block.getBlockchain()
-                        # print(f"#2 Last block's index: {blockchain[-1].index}")
-                        # blockchainMessage = assembleBlockchain()
-
-                        # try:
-                        #     print("Trying to open file!!")
-                        #     with open('pickWinner.txt', 'r') as file:
-                        #         proposedMessage = file.read()
-                        #         if blockchainMessage != proposedMessage:
-                        #             blockchainMessage = proposedMessage
-                        #             print("Sending file!")
                         
-                        # blockchainMessage = pickWinner(candidateBlocks)
-
-                        #if(message == "requesting iplist."):
-                            #send_iplist(iplist)
-
-
-                    #print("I am samaritan. Stopping my good works.")
-                    #comm.closeneighborConnection(self_samaritan) #close my given port (my side sustained connection as their neighbor)
-
                 else: #SERVER
                     #os.wait() #parent wait for child
                     time.sleep(1.5)
@@ -391,12 +377,16 @@ def run_server(parent_to_child,validator,self_samaritan_to_client,client_to_self
                         if (call == "call create blockchain"):
                             blockchainPut, account = newBlockchain()
                             towrite = assembleBlockchain()
+                            if len(blockchain) < 1:
+                                towrite = "No blockchain here :)"
+                            else:
+                                print(f"Blockchain has {len(blockchain)} blocks")
 
                             #server_to_client.put(blockchainPut)
                             print("create blockchain called")
                             # for block in blockchainPut:
                             #     server_to_client.put(block)
-                            print(f"putting: {towrite}") #towrite
+                            # print(f"putting: {towrite}") #towrite
                             parent_to_child.put(towrite)
                             print(f"qsize2: {parent_to_child.qsize()}")
                             # server_to_client.put(blockchainPut[-1])
@@ -410,9 +400,9 @@ def run_server(parent_to_child,validator,self_samaritan_to_client,client_to_self
                     while(server_input_to_server.empty()):
                         time.sleep(.5)
 
-                    if (not server_input_to_server.empty()):
-                        candidate = server_input_to_server.get()
-                        candidateBlocks.append(candidate)
+                    # if (not server_input_to_server.empty()):
+                    #     candidate = server_input_to_server.get()
+                    #     candidateBlocks.append(candidate)
 
                     print("\nPicking winner...")
                     while stopThreads == False:
@@ -442,7 +432,7 @@ def run_server(parent_to_child,validator,self_samaritan_to_client,client_to_self
                                             # blk = assembleBlock(newBlock)
                                             # parent_to_child.put(blk)
 
-                                           
+                                        
 
                                         else:
                                             blockchain.append(block)
@@ -482,14 +472,11 @@ def run_server(parent_to_child,validator,self_samaritan_to_client,client_to_self
                     #comm.senddatatoneighbor(neighbor, data)
                     message = comm.receivedatafromneighbor(neighbor)
                     print("server looping")
-
-
-
     except OSError:
-        print("OSerror")
+        print("it's the outer except")
 
 def runInput(server_input_to_server, validator):
-    #while True:
+    while True:
         print("[1] Upload File\n[2] Download File")
         choice = input("Choice: ")
         if choice == "1":
@@ -877,7 +864,7 @@ def downloadIPFS(fileIndex, validator):# , root def retrieveIpfs(conn, symmetric
 
     accessList = []
     newFileData = FileData(hash, fileName, validator.address, accessList)
-    addToCandidateBlocks("Download", newFileData)
+    # addToCandidateBlocks("Download", newFileData)
     print(f"Downloaded {newFileData.fileName} from IPFS.")
 
     # root.children["downloadMenu"].children["statusLabel"].configure(text=f"{fileName} downloaded successfully.")
