@@ -102,6 +102,7 @@ blockchain = [] # Blockchain is a series of validated Blocks
 tempBlocks = []
 ipfsHashes = [] # keep up with all uploaded IPFS hashes and file names
 fileNames = []
+accountNames = []
 nodes = [] #client tcp address array
 candidateBlocks = [] # candidateBlocks handles incoming blocks for validation
 candidateBlocksLock = threading.Lock()
@@ -152,16 +153,15 @@ def main():
     parent_to_child = multiprocessing.Queue()
 
     #message_queue.Queue()  # create a Shared queue for communication
-    initial_samaritan_jointo_ip = "146.229.163.144"#input("Enter the IP of a node in the blockchain you want to join: ")
+    # initial_samaritan_jointo_ip = "146.229.163.144"#input("Enter the IP of a node in the blockchain you want to join: ")
 
     time.sleep(1)
     
 
     threading.Thread(target=run_server, args=(parent_to_child,validator,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server,)).start()
-    #initial_samaritan_jointo_ip = "146.229.163.149"
     time.sleep(2)
 
-    threading.Thread(target=run_client, args=(parent_to_child,initial_samaritan_jointo_ip,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server,)).start()
+    threading.Thread(target=run_client, args=(parent_to_child,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server,)).start()
 
     # Handle candidate blocks in a separate thread
     # Define the lambda function
@@ -172,9 +172,15 @@ def main():
     GUI.root = GUI.setScenes()
     GUI.root.mainloop()
 
-def run_client(parent_to_child,initial_samaritan_jointo_ip,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server):#self_samaritan_to_client,client_to_self_samaritan): #needs periodic ip requesting(checking) added
+def run_client(parent_to_child,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server):#self_samaritan_to_client,client_to_self_samaritan): #needs periodic ip requesting(checking) added
     comm.write_to_client_out("debug, in client\n")
     
+    initial_samaritan_jointo_ip = ""
+    while not GUI.hasInputtedIP:
+        time.sleep(.1)
+    initial_samaritan_jointo_ip = GUI.GUIgetIP()
+    print(f"Got IP: {initial_samaritan_jointo_ip}")
+
     # Waiting for a connection with someone. If no immediate connection, then I am the first.
     # Because I am the first, I create the blockchain.
     while(1):
@@ -205,12 +211,9 @@ def run_client(parent_to_child,initial_samaritan_jointo_ip,self_samaritan_to_cli
         while(not server_to_client.empty()):
             receivedblock = server_to_client.get()
             blockchain.append(receivedblock)
-
-        
         time.sleep(4)
         printBlockchain()
         time.sleep(3)
-
 
     try:
         while(1): #automatic close response present in receivedatafromserver            
@@ -219,6 +222,7 @@ def run_client(parent_to_child,initial_samaritan_jointo_ip,self_samaritan_to_cli
             time.sleep(4)
 
             comm.senddatafromclient("requesting your blockchain", client)
+            
             recvd_chain = comm.receivedatafromsamaritan(client)
             convertString(recvd_chain)
 
@@ -248,6 +252,36 @@ def run_server(parent_to_child,validator,self_samaritan_to_client,client_to_self
     try:
         while(1):
             # accept incoming connections
+
+            # **********************************************************
+            print(f"checkpoint1")
+            while(client_to_server.empty()):
+                time.sleep(.5)
+
+            print(f"checkpoint2")
+
+            if (not client_to_server.empty()):
+                call = client_to_server.get()
+                if (call == "call create blockchain"):
+                    newBlockchain()
+                    towrite = assembleBlockchain()
+                    if len(blockchain) < 1:
+                        towrite = "No blockchain here :)"
+                    else:
+                        print(f"Blockchain has {len(blockchain)} blocks")
+
+                    print("create blockchain called")
+                    parent_to_child.put(towrite)
+                    print(f"qsize2: {parent_to_child.qsize()}")
+                    print("***** LOGIN NOW GO GO GO")
+
+                elif (call == "call login"):
+                    print("login plz")
+                    print("Waiting for blockchain arrival...")
+                    while len(blockchain) < 1:
+                        time.sleep(3)
+                    print("Got blockchain!")
+            # **********************************************************
 
             requester = comm.acceptconnectportConnection(server) #sit waiting/ready for new clients
             comm.receivedatafromrequester(requester)
@@ -314,33 +348,33 @@ def run_server(parent_to_child,validator,self_samaritan_to_client,client_to_self
                         
                 else: #SERVER
                     time.sleep(1.5)
-                    print(f"checkpoint1")
-                    while(client_to_server.empty()):
-                        time.sleep(.5)
+                    # print(f"checkpoint1")
+                    # while(client_to_server.empty()):
+                    #     time.sleep(.5)
 
-                    print(f"checkpoint2")
+                    # print(f"checkpoint2")
 
-                    if (not client_to_server.empty()):
-                        call = client_to_server.get()
-                        if (call == "call create blockchain"):
-                            newBlockchain()
-                            towrite = assembleBlockchain()
-                            if len(blockchain) < 1:
-                                towrite = "No blockchain here :)"
-                            else:
-                                print(f"Blockchain has {len(blockchain)} blocks")
+                    # if (not client_to_server.empty()):
+                    #     call = client_to_server.get()
+                    #     if (call == "call create blockchain"):
+                    #         newBlockchain()
+                    #         towrite = assembleBlockchain()
+                    #         if len(blockchain) < 1:
+                    #             towrite = "No blockchain here :)"
+                    #         else:
+                    #             print(f"Blockchain has {len(blockchain)} blocks")
 
-                            print("create blockchain called")
-                            parent_to_child.put(towrite)
-                            print(f"qsize2: {parent_to_child.qsize()}")
-                            print("***** LOGIN NOW GO GO GO")
+                    #         print("create blockchain called")
+                    #         parent_to_child.put(towrite)
+                    #         print(f"qsize2: {parent_to_child.qsize()}")
+                    #         print("***** LOGIN NOW GO GO GO")
 
-                        elif (call == "call login"):
-                            print("login plz")
-                            print("Waiting for blockchain arrival...")
-                            while len(blockchain) < 1:
-                                time.sleep(3)
-                            print("Got blockchain!")
+                    #     elif (call == "call login"):
+                    #         print("login plz")
+                    #         print("Waiting for blockchain arrival...")
+                    #         while len(blockchain) < 1:
+                    #             time.sleep(3)
+                    #         print("Got blockchain!")
 
                     
                     inputThread = threading.Thread(target=runInput, args=(server_input_to_server,validator,))
@@ -391,15 +425,6 @@ def run_server(parent_to_child,validator,self_samaritan_to_client,client_to_self
                                     print("length of validators is 0")
 
                     comm.senddatatoneighbor(neighbor, blockchainMessage)
-                    # except:
-                    #     # print("bad file :(")
-                    #     pass
-
-                    
-                        # block.changeFlag = False
-
-                    #data = "Server Data"
-                    #comm.senddatatoneighbor(neighbor, data)
                     message = comm.receivedatafromneighbor(neighbor)
                     print("server looping")
     except OSError:
@@ -647,6 +672,7 @@ def convertString(currentBlockchain):
             blockchain.append(newBlock)
 
         i += 1
+    GUI.setGUIBlockchain(blockchain)
     return result
 
 def createValidator(currentAccount):
