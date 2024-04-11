@@ -122,16 +122,9 @@ def signal_handler(sig, frame):
 
 def newBlockchain():
     genesisBlock = generateGenesisBlock()
-    blockchain.append(genesisBlock)
-    username = input("Username: ")
-    password = input("Password: ")
-    validLogin, account = login(username, password)
-    if not validLogin:
-        return
+    blockchain.append(genesisBlock)  
     generateSampleBlocks()
     blockchainMessage = assembleBlockchain()
-
-    return blockchain, account
 
 def main():
     myip = comm.myIP()
@@ -154,7 +147,7 @@ def main():
     parent_to_child = multiprocessing.Queue()
 
     #message_queue.Queue()  # create a Shared queue for communication
-    initial_samaritan_jointo_ip = "146.229.163.145"#input("Enter the IP of a node in the blockchain you want to join: ")
+    initial_samaritan_jointo_ip = "146.229.163.144"#input("Enter the IP of a node in the blockchain you want to join: ")
 
     time.sleep(1)
     
@@ -379,7 +372,7 @@ def run_server(parent_to_child,validator,self_samaritan_to_client,client_to_self
                         #print("not empty")
                         call = client_to_server.get()
                         if (call == "call create blockchain"):
-                            blockchainPut, account = newBlockchain()
+                            newBlockchain()
                             towrite = assembleBlockchain()
                             if len(blockchain) < 1:
                                 towrite = "No blockchain here :)"
@@ -395,8 +388,16 @@ def run_server(parent_to_child,validator,self_samaritan_to_client,client_to_self
                             print(f"qsize2: {parent_to_child.qsize()}")
                             # server_to_client.put(blockchainPut[-1])
                             #print("")
+                            username = input("Username: ")
+                            password = input("Password: ")
+                            validLogin, account = login(username, password)
+
                         elif (call == "call login"):
                             print("login plz")
+                            print("Waiting for blockchain arrival...")
+                            while len(blockchain) < 1:
+                                time.sleep(3)
+                            print("Got blockchain!")
                             username = input("Username: ")
                             password = input("Password: ")
                             validLogin, account = login(username, password)
