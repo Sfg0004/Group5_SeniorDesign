@@ -489,7 +489,7 @@ def run_server(parent_to_child,validator,self_samaritan_to_client,client_to_self
 
 def runInput(server_input_to_server, validator):
     while True:
-        print("[1] Upload File\n[2] Download File")
+        print("[1] Upload File\n[2] Download File\n[3] Create Account")
         choice = input("Choice: ")
         if choice == "1":
             newFileData = uploadIPFS(validator)
@@ -506,6 +506,14 @@ def runInput(server_input_to_server, validator):
             fileIndex = input("File choice: ")
             newFileData = downloadIPFS(int(fileIndex) - 1, validator)
             candidateBlock = addToCandidateBlocks("Download", newFileData)
+            server_input_to_server.put(candidateBlock)
+        elif choice == "3":
+            username = input("Input username: ")
+            password = input("Input password: ")
+            role = input("Input role: ")
+            fullName = input("Input full legal name: ")
+            newAccount = createAccount(username, password, fullName, role)
+            candidateBlock = addToCandidateBlocks("Create_Account", newAccount)
             server_input_to_server.put(candidateBlock)
 
 #
@@ -803,7 +811,7 @@ def createAccount(username, password, name, roleSelection): # , root
     else:
         role = "p"
     newAccount = Account(username, password, role, name)
-    addToCandidateBlocks("Create_Account", newAccount)
+    # addToCandidateBlocks("Create_Account", newAccount)
     print(f"Created account for: {newAccount.fullLegalName}")
 
     # root.children["createAccountMenu"].children["statusLabel"].configure(text=f"{newAccount.fullLegalName}'s account successfully created!")
