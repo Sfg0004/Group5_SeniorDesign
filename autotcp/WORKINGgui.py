@@ -179,6 +179,7 @@ def run_client(parent_to_child,self_samaritan_to_client,client_to_self_samaritan
     while not GUI.hasInputtedIP:
         time.sleep(.1)
     initial_samaritan_jointo_ip = GUI.GUIgetIP()
+    initial_samaritan_jointo_ip = "10.4.153.165"
     print(f"Got IP: {initial_samaritan_jointo_ip}")
 
     # Waiting for a connection with someone. If no immediate connection, then I am the first.
@@ -752,6 +753,3 @@ def getBlockchain():
 
 if __name__ == "__main__":
     main()
-
-
-
