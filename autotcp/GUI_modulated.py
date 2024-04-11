@@ -104,7 +104,10 @@ stopThreads = False
 apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6ImE0NmE4MmFjLWJlYjEtNGM4MC05MjIwLTIxZDFlNGQ3MGM1NyIsIm9yZ0lkIjoiMzU5ODUyIiwidXNlcklkIjoiMzY5ODMwIiwidHlwZUlkIjoiNTY2M2MwZjAtMmM3Mi00N2YxLWJkMDktNTM1M2RmYmZhNjhhIiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE2OTY0NDQ5MTgsImV4cCI6NDg1MjIwNDkxOH0.kW9jP_Y_2JA70nCkUaBQMW329kQK6vuyHIfFNym0SNs"
 
 # constants for UI bg colors:
-loginBG = "#32a852"
+creamColor = "#f6f0ea"
+buttonColor = "#831eff"
+
+loginBG = creamColor
 adminBG = "#ff695e"
 genericBG = "#ffb45e"
 accountBG = "#a09eff"
@@ -167,11 +170,11 @@ def getDimensions(root):
     return w, h
 
 def createWelcomeScene(root):
-    welcomeScene = Frame(root, bg=loginBG, name='welcomeScene')
+    welcomeScene = Frame(root, bg=creamColor, name='welcomeScene')
     w, h = getDimensions(root)
 
     # main label at top center
-    welocmeLabel = Label(welcomeScene, text="Welcome!", font=font.Font(size=20))
+    welocmeLabel = Label(welcomeScene, bg=creamColor, text="Welcome!", font=font.Font(size=20))
     welocmeLabel.place(anchor="c", relx=.5, rely=.05)
 
     # username label & entry box
@@ -182,22 +185,22 @@ def createWelcomeScene(root):
     ipEntryBox.place(anchor="c", rely=.4, relx=.55)
 
     # IP connect button
-    connectButton = Button(welcomeScene, text="Connect", name="connectButton", command=lambda: getIP(ipInput.get(), root))
+    connectButton = Button(welcomeScene, fg='white', bg=buttonColor, text="Connect", name="connectButton", command=lambda: getIP(ipInput.get(), root))
     connectButton.place(anchor="c", relx=.5, rely=.75)
 
     # status label
-    statusLabel = Label(welcomeScene, text="", name="statusLabel", font=('Arial', 14), fg="red", bg=loginBG)
+    statusLabel = Label(welcomeScene, text="", name="statusLabel", font=('Arial', 14), fg="red", bg=creamColor)
     statusLabel.place(anchor="c", relx=.5, rely=.6)
 
     welcomeScene.place(anchor="c", relx=.5, rely=.5, width=w, height=h)
     return welcomeScene
 
 def createLoginScene(root):    
-    loginScene = Frame(root, bg=loginBG, name='loginScene')
+    loginScene = Frame(root, bg=creamColor, name='loginScene')
     w, h = getDimensions(root)
 
     # main label at top center
-    loginLabel = Label(loginScene, text="Login Page", font=font.Font(size=20))
+    loginLabel = Label(loginScene, bg=creamColor, text="Login Page", font=font.Font(size=20))
     loginLabel.place(anchor="c", relx=.5, rely=.05)
 
     # username label & entry box
@@ -215,11 +218,11 @@ def createLoginScene(root):
     passwordEntryBox.place(anchor="c", rely=.5, relx=.55)
 
     # login button
-    loginButton = Button(loginScene, text="Login", name="loginButton", command=lambda: login(usernameInput.get(), passwordInput.get(), root))
+    loginButton = Button(loginScene, fg='white', bg=buttonColor, text="Login", name="loginButton", command=lambda: login(usernameInput.get(), passwordInput.get(), root))
     loginButton.place(anchor="c", relx=.5, rely=.75)
 
     # status label
-    statusLabel = Label(loginScene, text="", name="statusLabel", font=('Arial', 14), fg="red", bg=loginBG)
+    statusLabel = Label(loginScene, text="", name="statusLabel", font=('Arial', 14), fg="red", bg=creamColor)
     statusLabel.place(anchor="c", relx=.5, rely=.6)
 
     # ip label
@@ -230,11 +233,11 @@ def createLoginScene(root):
     return loginScene
 
 def createAdminMenu(root):
-    adminPage = Frame(root, bg=adminBG, name='adminMenu')
+    adminPage = Frame(root, bg=creamColor, name='adminMenu')
     w, h = getDimensions(root)
 
     # main label at top center
-    adminLabel = Label(adminPage, text="Admin Menu", font=font.Font(size=20))
+    adminLabel = Label(adminPage, bg=creamColor, text="Admin Menu", font=font.Font(size=20))
     adminLabel.place(anchor="c", relx=.5, rely=.05)
 
     # name label under main label
@@ -242,19 +245,19 @@ def createAdminMenu(root):
     nameLabel.place(anchor="c", relx=.5, rely=.15)
 
     # create account button
-    createAccountButton = Button(adminPage, text="Create Account", name="createAccountButton")
+    createAccountButton = Button(adminPage, fg='white', bg=buttonColor, text="Create Account", name="createAccountButton")
     createAccountButton.place(anchor="c", relx=.5, rely=.45)
 
     # view blockchain button
-    viewBlockchainButton = Button(adminPage, text="View Blockchain", name="viewBlockchainButton")
+    viewBlockchainButton = Button(adminPage, fg='white', bg=buttonColor, text="View Blockchain", name="viewBlockchainButton")
     viewBlockchainButton.place(anchor="c", relx=.5, rely=.525)
 
     # view account names button
-    viewAccountNamesButton = Button(adminPage, text="View Account Names", name="viewAccountNamesButton", command=lambda: handleListAccountsButton(root))
+    viewAccountNamesButton = Button(adminPage, fg='white', bg=buttonColor, text="View Account Names", name="viewAccountNamesButton", command=lambda: handleListAccountsButton(root))
     viewAccountNamesButton.place(anchor="c", relx=.5, rely=.6)
 
     # logout button
-    logoutButton = Button(adminPage, text="Logout", name="logoutButton", command=lambda: logout(root))
+    logoutButton = Button(adminPage, fg='white', bg=buttonColor, text="Logout", name="logoutButton", command=lambda: logout(root))
     logoutButton.place(anchor="c", relx=.5, rely=.75)
 
     # ip label
@@ -265,11 +268,11 @@ def createAdminMenu(root):
     return adminPage
 
 def createGenericMenu(root):
-    genericMenu = Frame(root, bg=genericBG, name='genericMenu')
+    genericMenu = Frame(root, bg=creamColor, name='genericMenu')
     w, h = getDimensions(root)
 
     # main label at top center
-    genericLabel = Label(genericMenu, text="User Menu", font=font.Font(size=20))
+    genericLabel = Label(genericMenu, bg=creamColor, text="User Menu", font=font.Font(size=20))
     genericLabel.place(anchor="c", relx=.5, rely=.05)
 
     # name label under main label
@@ -277,19 +280,19 @@ def createGenericMenu(root):
     nameLabel.place(anchor="c", relx=.5, rely=.15)
 
     # create upload button
-    uploadButton = Button(genericMenu, text="Upload File", name="uploadButton", command=lambda: uploadIPFS(root))
+    uploadButton = Button(genericMenu, fg='white', bg=buttonColor, text="Upload File", name="uploadButton", command=lambda: uploadIPFS(root))
     uploadButton.place(anchor="c", relx=.5, rely=.4)
 
     # create download button
-    downloadButton = Button(genericMenu, text="Download File", name="downloadButton")
+    downloadButton = Button(genericMenu, fg='white', bg=buttonColor, text="Download File", name="downloadButton")
     downloadButton.place(anchor="c", relx=.5, rely=.55)
 
     # create upload status label
-    statusLabel = Label(genericMenu, name="statusLabel", text="", font=('Arial', 12), fg="red", bg=genericBG)
+    statusLabel = Label(genericMenu, name="statusLabel", text="", font=('Arial', 12), fg="red", bg=creamColor)
     statusLabel.place(anchor='c', relx=.5, rely=.455)
 
     # logout button
-    logoutButton = Button(genericMenu, text="Logout", name="logoutButton")
+    logoutButton = Button(genericMenu, fg='white', bg=buttonColor, text="Logout", name="logoutButton")
     logoutButton.place(anchor="c", relx=.5, rely=.75)
 
     # ip label
@@ -300,11 +303,11 @@ def createGenericMenu(root):
     return genericMenu
 
 def createCreateAccountMenu(root):
-    createAccountMenu = Frame(root, bg=accountBG, name='createAccountMenu')
+    createAccountMenu = Frame(root, bg=creamColor, name='createAccountMenu')
     w, h = getDimensions(root)
 
     # main label at top center
-    createAccountLabel = Label(createAccountMenu, text="Create New Account", font=font.Font(size=20))
+    createAccountLabel = Label(createAccountMenu, bg=creamColor, text="Create New Account", font=font.Font(size=20))
     createAccountLabel.place(anchor="c", relx=.5, rely=.05)
 
     # username label & entry box
@@ -335,26 +338,26 @@ def createCreateAccountMenu(root):
     roleCombobox.place(anchor="c", rely=.6, relx=.55)
 
     # account creation status label
-    statusLabel = Label(createAccountMenu, text="", name="statusLabel", font=('Arial', 14), fg='blue', bg=accountBG)
+    statusLabel = Label(createAccountMenu, text="", name="statusLabel", font=('Arial', 14), fg='blue', bg=creamColor)
     statusLabel.place(anchor="c", relx=.5, rely=.675)
 
     # create account button
-    createAccountButton = Button(createAccountMenu, name="createAccountButton", text="Create Account", command=lambda: createAccount(usernameEntryBox.get(), passwordEntryBox.get(), fullNameEntryBox.get(), roleCombobox.get(), root))
+    createAccountButton = Button(createAccountMenu, fg='white', bg=buttonColor, name="createAccountButton", text="Create Account", command=lambda: createAccount(usernameEntryBox.get(), passwordEntryBox.get(), fullNameEntryBox.get(), roleCombobox.get(), root))
     createAccountButton.place(anchor="c", relx=.6, rely=.8)
 
     # back button
-    backButton = Button(createAccountMenu, name="backButton", text="Back", command=lambda: switchScenes(root.children["createAccountMenu"], root.children["adminMenu"]))
+    backButton = Button(createAccountMenu, fg='white', bg=buttonColor, name="backButton", text="Back", command=lambda: switchScenes(root.children["createAccountMenu"], root.children["adminMenu"]))
     backButton.place(anchor="c", relx=.4, rely=.8)
 
     createAccountMenu.place(anchor="c", relx=.5, rely=.5, width=w, height=h)
     return createAccountMenu
 
 def createDownloadMenu(root):
-    downloadMenu = Frame(root, bg=downloadBG, name='downloadMenu')
+    downloadMenu = Frame(root, bg=creamColor, name='downloadMenu')
     w, h = getDimensions(root)
 
     # main label at top center
-    downloadLabel = Label(downloadMenu, text="Download File", font=font.Font(size=20))
+    downloadLabel = Label(downloadMenu, bg=creamColor, text="Download File", font=font.Font(size=20))
     downloadLabel.place(anchor="c", relx=.5, rely=.05)
 
     # file name label & dropdown
@@ -364,7 +367,7 @@ def createDownloadMenu(root):
     fileCombobox.place(anchor="c", rely=.45, relx=.55)
 
     # download status label
-    statusLabel = Label(downloadMenu, name="statusLabel", text="", fg='yellow', bg=downloadBG, font=('Arial', 12))
+    statusLabel = Label(downloadMenu, name="statusLabel", text="", fg='yellow', bg=creamColor, font=('Arial', 12))
     statusLabel.place(anchor='c', relx=.5, rely=.525)
 
     # download button
@@ -372,18 +375,18 @@ def createDownloadMenu(root):
     downloadButton.place(anchor="c", relx=.6, rely=.8)
 
     # back button
-    backButton = Button(downloadMenu, name="backButton", text="Back", command=lambda: switchScenes(root.children["downloadMenu"], root.children["genericMenu"]))
+    backButton = Button(downloadMenu, fg='white', bg=buttonColor, name="backButton", text="Back", command=lambda: switchScenes(root.children["downloadMenu"], root.children["genericMenu"]))
     backButton.place(anchor="c", relx=.4, rely=.8)
 
     downloadMenu.place(anchor="c", relx=.5, rely=.5, width=w, height=h)
     return downloadMenu    
 
 def createBlockchainMenu(root):
-    blockchainScene = Frame(root, bg=accountBG, name='blockchainScene')
+    blockchainScene = Frame(root, bg=creamColor, name='blockchainScene')
     w, h = getDimensions(root)
 
     # main label at top center
-    blockchainLabel = Label(blockchainScene, text="View Blockchain", font=font.Font(size=20))
+    blockchainLabel = Label(blockchainScene, bg=creamColor, text="View Blockchain", font=font.Font(size=20))
     blockchainLabel.place(anchor="c", relx=.5, rely=.05)
 
     # max index label
@@ -398,11 +401,11 @@ def createBlockchainMenu(root):
     indexEntryBox.place(anchor="c", rely=.5, relx=.55)
 
     # view block button
-    viewBlockButton = Button(blockchainScene, text="View Block", name="viewBlockButton", command=lambda: spawnBlock(root, indexInput.get()))
+    viewBlockButton = Button(blockchainScene, fg='white', bg=buttonColor, text="View Block", name="viewBlockButton", command=lambda: spawnBlock(root, indexInput.get()))
     viewBlockButton.place(anchor="c", relx=.5, rely=.65)
 
     # back button
-    backButton = Button(blockchainScene, text="Back", name="backButton", command=lambda: switchScenes(root.children["blockchainScene"], root.children["adminMenu"]))
+    backButton = Button(blockchainScene, fg='white', bg=buttonColor, text="Back", name="backButton", command=lambda: switchScenes(root.children["blockchainScene"], root.children["adminMenu"]))
     backButton.place(anchor="c", relx=.5, rely=.75)
 
     blockchainScene.place(anchor="c", relx=.5, rely=.5, width=w, height=h)
