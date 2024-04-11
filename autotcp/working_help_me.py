@@ -34,8 +34,8 @@ samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 self_samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 neighbor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 initial_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-connectport = 11410
-givenport = 12410
+connectport = 11411
+givenport = 12411
 
 # BLOCK.PY CLASSES
 class Validator:
@@ -150,7 +150,7 @@ def main():
     server_input_to_server = Queue()
 
     #message_queue.Queue()  # create a Shared queue for communication
-    initial_samaritan_jointo_ip = "146.229.163.144"#input("Enter the IP of a node in the blockchain you want to join: ")
+    initial_samaritan_jointo_ip = "146.229.163.145"#input("Enter the IP of a node in the blockchain you want to join: ")
 
     time.sleep(1)
     
@@ -184,15 +184,25 @@ def run_client(initial_samaritan_jointo_ip,self_samaritan_to_client,client_to_se
             break
         except:
             comm.write_to_client_out("I am client. My request to connect to a server failed.")
-            while(not server_to_client.empty()):
-                receivedblock = server_to_client.get()
-                blockchain.append(receivedblock)
+            if (len(blockchain) == 0):
+                time.sleep(3)
+                print("Calling create blockchain!")
+                client_to_server.put("call create blockchain")
+
+
+        try:
+            comm.write_to_client_out(f"samaritan receiveport is: {samaritan_port}")
+            time.sleep(1)
+            comm.requestsustainedConnection(samaritan_ip, samaritan_port, client)
+            comm.write_to_client_out("sustained samaritan connection successful. hooray!")
+        except:
+            comm.write_to_client_out("I am client. My request for sustained connection failed.")
         
-        
-        if (len(blockchain) == 0):
-            time.sleep(3)
-            print("Calling create blockchain!")
-            client_to_server.put("call create blockchain")
+        time.sleep(1.5)
+
+        while(not server_to_client.empty()):
+            receivedblock = server_to_client.get()
+            blockchain.append(receivedblock)
 
         else:
             time.sleep(6)
@@ -200,22 +210,7 @@ def run_client(initial_samaritan_jointo_ip,self_samaritan_to_client,client_to_se
             printBlockchain()
         time.sleep(3)
 
-    while(1): #automatic close response present in receivedatafromserver
-        try:
-            response = comm.receivedatafromserver(initial_client)
-            if (response == "closed"):
-                break
-        except:
-            pass
-        time.sleep(1)
 
-    try:
-        comm.write_to_client_out(f"samaritan receiveport is: {samaritan_port}")
-        time.sleep(5)
-        comm.requestsustainedConnection(samaritan_ip, samaritan_port, client)
-        comm.write_to_client_out("sustained samaritan connection successful. hooray!")
-    except:
-        comm.write_to_client_out("I am client. My request for sustained connection failed.")
 
     try:
         while(1): #automatic close response present in receivedatafromserver
