@@ -1,0 +1,65 @@
+<!-- fragment_upload.xml -->
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <!-- Button handler to handle uploading the photo from the device -->
+    <Button
+        android:id="@+id/Continue"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/Continue"
+        android:layout_centerHorizontal="true"
+        android:layout_below="@id/copyButton"
+        android:layout_marginTop="16dp"
+        android:backgroundTint="#0077c8"/>
+        <!--android:srcCompat="@(binding.imageBitmap)"/>-->
+
+    <!-- Text view to display the hash of the uploaded file-->
+    <TextView
+        android:id="@+id/hashtextview"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:text="@string/fileHash"
+        />
+
+    <!-- Image button to turn an image of the copy symbol into a button to copy to the clipboard-->
+    <Button
+        android:id="@+id/copyButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/hashtextview"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="16dp"
+        android:text="@string/copyHash"
+        android:contentDescription="@string/copyImageButtonDescription"
+        android:src="@drawable/copyhashimage"
+        />
+
+    <ImageView
+        android:id="@+id/ThumbsUp"
+        android:layout_width="181dp"
+        android:layout_height="140dp"
+        android:layout_above="@id/hashtextview"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="57dp"
+        android:contentDescription="@string/uploadSuccessfulSymbol"
+        android:src="@drawable/thumbsup"
+        android:visibility="visible" />
+
+    <ImageView
+        android:id="@+id/Warning"
+        android:layout_width="191dp"
+        android:layout_height="160dp"
+        android:layout_above="@id/hashtextview"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="57dp"
+        android:src="@drawable/warninglabel"
+        android:contentDescription="@string/uploadFailureSymbol"
+        android:visibility="gone" />
+
+</RelativeLayout>

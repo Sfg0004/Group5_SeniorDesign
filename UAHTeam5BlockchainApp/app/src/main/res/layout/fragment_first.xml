@@ -1,0 +1,85 @@
+<!-- fragment_first.xml -->
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <!-- Upload Button -->
+    <Button
+        android:id="@+id/buttonUpload"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/upload"
+        android:layout_above="@id/buttonDownload"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="16dp"/>
+
+    <!-- Download Button -->
+    <Button
+        android:id="@+id/buttonDownload"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/download"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:layout_marginTop="16dp"/>
+
+    <!-- View Files Button -->
+    <Button
+        android:id="@+id/buttonFiles"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/buttonDownload"
+        android:text="@string/savedFiles"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="16dp"/>
+
+    <!-- View Files Button -->
+    <Button
+        android:id="@+id/buttonLogout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/buttonFiles"
+        android:text="@string/logout"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="16dp"/>
+
+    <RelativeLayout
+        android:id="@+id/statusLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/buttonLogout"
+        android:layout_marginTop="55dp"
+        android:layout_centerHorizontal="true"
+        android:visibility="gone"
+        >
+        <TextView
+            android:id="@+id/BlockchainStatusTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:layout_toEndOf="@+id/BlockchainStatusIcon"
+            android:layout_marginStart="8dp" />
+
+        <ImageView
+            android:id="@+id/BlockchainStatusIcon"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_alignParentStart="true"
+            android:contentDescription="@null"
+            android:src="@drawable/failuremark"/>
+        </RelativeLayout>
+
+    <ImageView
+        android:id="@+id/UAHimageView"
+        android:layout_width="196dp"
+        android:layout_height="155dp"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="-30dp"
+        android:src="@drawable/uahbluelogo" />
+
+
+</RelativeLayout>

@@ -1,0 +1,79 @@
+<resources>
+    <string name="app_name">UAHTeam5BlockchainApp</string>
+    <string name="action_settings">Settings</string>
+    <!-- Strings used for fragments for navigation -->
+    <string name="first_fragment_label">IPFS Blockchain</string>
+    <string name="upload_fragment_label">Upload File</string>
+    <string name="download_fragment_label">Download Files</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+    <string name="camera">Upload Photo</string>
+    <string name="camera_roll">Upload from Camera Roll</string>
+    <string name="files">Upload from device</string>
+
+    <!--Strings for the first fragment-->
+    <string name="upload">Upload</string>
+    <string name="download">Download</string>
+    <string name="savedFiles">Files</string>
+
+    <!--Strings for the Confirm Upload fragment-->
+    <string name="confirmUpload">Upload</string>
+    <string name="cancelUpload">Cancel</string>
+
+    <string name="invalidBlockchain">Invalid Blockchain!</string>
+    <string name="validBlockchain">Blockchain Validated</string>
+    <string name="IBInstructions">Invalid Blockchain! Try reloading the app</string>
+
+    <string name="fileHash">File Hash Goes Here </string>
+    <string name="copyImageButtonDescription">Copy Hash</string>
+
+    <string name="hashConfirmed">Hash Validated</string>
+    <string name="hashIssue">Issue with the hash validation</string>
+
+    <string name="uploadFinished">Upload Finished</string>
+    <string name="uploadSuccessful">Upload Successful</string>
+    <string name="uploadFailed">Upload Failed</string>
+    <string name="Continue">Continue</string>
+
+    <string name="login">Login</string>
+
+    <!-- String for text boxes below an image-->
+    <string name="textImage">Image to upload</string>
+    <string name="textFolder">Folder to upload</string>
+    <string name="textFile">File to upload</string>
+    <string name="Files">Files</string>
+    <string name="FilesDownloaded">Files Downloaded</string>
+    <string name="NoFiles">No Files have been downloaded\nOnce available for download,\nthey will be listed here</string>
+    <string name="NoFilesSaved">No Files have been saved\nOnce downloaded,\nthey will be listed here</string>
+
+    <string name="organizationLogo">Organization Logo</string>
+    <string name="copyHash">Copy Hash</string>
+    <string name="uploadSuccessfulSymbol">Upload Successful Symbol</string>
+    <string name="uploadFailureSymbol">Upload Failure Symbol</string>
+    <string name="uahLogo">UAH Logo</string>
+    <string name="list_of_files_uploaded">List of Files uploaded</string>
+    <string name="list_of_files_downloaded_on_device">List of files downloaded on device</string>
+    <string name="list_of_downloaded_files">List of downloaded files</string>
+    <string name="logout">Logout</string>
+    <string name="select_file_to_open">Select file to open</string>
+    <string name="representation_of_the_image_file_to_be_uploaded">Representation of the image/file to be uploaded</string>
+    <string name="username_password_is_incorrect">username/password is incorrect</string>
+    <string name="please_select_a_role">Please select a Role</string>
+    <string name="create">Create</string>
+    <string name="username">username</string>
+    <string name="full_name">full name</string>
+    <string name="create_user">Create User</string>
+    <string name="download_multiple_files">Download Multiple Files</string>
+    <string name="done">Done</string>
+    <string name="view_blockchain">View Blockchain</string>
+    <string name="view_active_users">View Active Users</string>
+    <string name="description_of_what_s_shown_in_the_scroll_box_below">Description of what\'s shown in the scroll box below</string>
+    <string name="blockchain">Blockchain</string>
+    <string name="list_of_users_to_give_access_to">list of users to give access to</string>
+    <string name="grant_access_to_users">Grant access to users:</string>
+    <string name="password">password</string>
+    <string name="confirm_password">confirm password</string>
+    <string name="stay_logged_in">Stay logged in</string>
+
+
+</resources>

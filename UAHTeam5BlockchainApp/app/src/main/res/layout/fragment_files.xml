@@ -1,0 +1,42 @@
+<!-- fragment_first.xml -->
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <!-- Text view to inform the user that there are no files downloaded-->
+    <TextView
+        android:id="@+id/noFiles"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/NoFilesSaved"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:visibility="gone"
+        android:textAlignment="center"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        />
+
+    <!--android:layout_above="@id/UAHimageView"-->
+    <!--can be used if we want to stick a logo at the bottom-->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@string/list_of_files_downloaded_on_device">
+
+        <!-- Shows list of the files the user can open -->
+        <LinearLayout
+            android:id="@+id/SavedFilesList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="visible"
+            android:orientation="vertical"
+            android:padding="16dp"
+
+            />
+    </ScrollView>
+
+</RelativeLayout>

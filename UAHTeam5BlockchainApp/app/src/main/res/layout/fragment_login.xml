@@ -1,0 +1,86 @@
+<!-- fragment_first.xml -->
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <!-- Button to login the user -->
+    <Button
+        android:id="@+id/buttonLogin"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/stayLoggedInSwitch"
+        android:layout_centerInParent="true"
+        android:layout_marginTop="10dp"
+        android:text="@string/login" />
+
+    <ImageView
+        android:id="@+id/UAHimageView"
+        android:layout_width="196dp"
+        android:layout_height="155dp"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="-30dp"
+        android:src="@drawable/uahbluelogo" />
+
+    <Switch
+        android:id="@+id/stayLoggedInSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/editTextPassword"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="10dp"
+        android:checked="true"
+        android:minHeight="48dp"
+        android:text="@string/stay_logged_in" />
+
+    <EditText
+        android:id="@+id/editTextPassword"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:ems="10"
+        android:hint="@string/password"
+        android:inputType="textPassword"
+        android:minHeight="48dp" />
+
+    <EditText
+        android:id="@+id/editUsername"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/editTextPassword"
+        android:layout_centerHorizontal="true"
+        android:minHeight="48dp"
+        android:ems="10"
+        android:hint="@string/username"
+        android:inputType="text" />
+
+    <ImageView
+        android:id="@+id/logoView"
+        android:layout_width="223dp"
+        android:layout_height="255dp"
+        android:layout_centerHorizontal="true"
+        android:contentDescription="@string/organizationLogo"
+        android:visibility="visible"
+        android:layout_marginBottom="16dp"
+        app:srcCompat="@drawable/blockchainlogo" />
+
+    <TextView
+        android:id="@+id/incorrectPassword"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/buttonLogin"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="8dp"
+        android:text="@string/username_password_is_incorrect"
+        android:textColor="#FF0000"
+        android:visibility="invisible"
+        android:alpha="1.0"
+        />
+
+</RelativeLayout>

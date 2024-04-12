@@ -1,0 +1,57 @@
+<!-- fragment_first.xml -->
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <!-- Button handler for creating a user -->
+    <Button
+        android:id="@+id/CreateUser"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/create_user"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:layout_above="@id/ViewBlockchain"
+        android:layout_marginBottom="16dp"
+        android:backgroundTint="#0000FF"
+        />
+
+    <Button
+        android:id="@+id/buttonLogout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/logout"
+        android:layout_centerHorizontal="true"
+        android:layout_below="@id/viewActiveUsers"
+        android:layout_marginBottom="16dp"
+        android:backgroundTint="#0000FF"
+        />
+
+    <Button
+        android:id="@+id/viewActiveUsers"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/view_active_users"
+        android:layout_centerHorizontal="true"
+        android:layout_below="@id/ViewBlockchain"
+        android:layout_marginBottom="16dp"
+        android:backgroundTint="#0000FF"
+        />
+
+    <!-- Button handler for the cancel upload option -->
+    <Button
+        android:id="@+id/ViewBlockchain"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/view_blockchain"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:layout_marginBottom="16dp"
+        android:backgroundTint="#0000FF"
+        />
+
+
+</RelativeLayout>

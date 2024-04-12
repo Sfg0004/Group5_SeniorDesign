@@ -1,0 +1,52 @@
+<!-- fragment_upload.xml -->
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <!-- Button handler for the upload photo from camera option -->
+    <Button
+        android:id="@+id/UploadPhoto"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/camera"
+        android:layout_above="@id/UploadCameraRoll"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="16dp"
+        android:backgroundTint="#0077c8"/>
+
+    <!-- Button handler for the upload photo from the camera roll option -->
+    <Button
+        android:id="@+id/UploadCameraRoll"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/camera_roll"
+        android:layout_centerVertical="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="16dp"
+        android:backgroundTint="#0077c8"/>
+
+    <!-- Button handler to handle uploading the photo from the device -->
+    <Button
+        android:id="@+id/UploadFromDevice"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/files"
+        android:layout_below="@id/UploadCameraRoll"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="16dp"
+        android:backgroundTint="#0077c8"/>
+
+    <!-- Image view to display the UAH logo -->
+    <ImageView
+        android:id="@+id/UAHimageView"
+        android:layout_width="196dp"
+        android:layout_height="155dp"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="-30dp"
+        android:src="@drawable/uahbluelogo" />
+
+</RelativeLayout>

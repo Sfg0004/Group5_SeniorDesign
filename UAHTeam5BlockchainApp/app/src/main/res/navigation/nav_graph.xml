@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/LoginFragment">
+
+    <!-- No label for this fragment as it is the login screen-->
+    <fragment
+        android:id="@+id/LoginFragment"
+        android:name="com.example.uahteam5blockchainapp.LoginFragment"
+        android:label=""
+        tools:layout="@layout/fragment_login">
+
+        <action
+            android:id="@+id/action_LoginFragment_to_FirstFragment"
+            app:destination="@id/FirstFragment" />
+        <action
+            android:id="@+id/action_LoginFragment_to_AdminFragment"
+            app:destination="@id/AdminFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/FirstFragment"
+        android:name="com.example.uahteam5blockchainapp.FirstFragment"
+        android:label="@string/first_fragment_label"
+        tools:layout="@layout/fragment_first">
+
+        <action
+            android:id="@+id/action_FirstFragment_to_UploadFragment"
+            app:destination="@id/UploadFragment" />
+        <action
+            android:id="@+id/action_FirstFragment_to_DownloadFragment"
+            app:destination="@id/DownloadFragment" />
+        <action
+            android:id="@+id/action_FirstFragment_to_FilesFragment"
+            app:destination="@id/FilesFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/UploadFragment"
+        android:name="com.example.uahteam5blockchainapp.UploadFragment"
+        android:label="@string/upload_fragment_label"
+        tools:layout="@layout/fragment_upload">
+
+        <action
+            android:id="@+id/action_UploadFragment_to_FirstFragment"
+            app:destination="@id/FirstFragment"/>
+
+        <action
+            android:id="@+id/action_UploadFragment_to_ConfirmUploadFragment"
+            app:destination="@id/ConfirmUploadFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/DownloadFragment"
+        android:name="com.example.uahteam5blockchainapp.DownloadFragment"
+        android:label="@string/download_fragment_label"
+        tools:layout="@layout/fragment_download">
+
+        <action
+            android:id="@+id/action_DownloadFragment_to_FirstFragment"
+            app:destination="@id/FirstFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/ConfirmUploadFragment"
+        android:name="com.example.uahteam5blockchainapp.ConfirmUploadFragment"
+        android:label="@string/confirmUpload"
+        tools:layout="@layout/fragment_upload_confirm">
+
+        <action
+            android:id="@+id/action_ConfirmUploadFragment_to_FirstFragment"
+            app:destination="@id/FirstFragment" />
+        <action
+        android:id="@+id/action_ConfirmUploadFragment_to_UploadFinishFragment"
+        app:destination="@id/UploadFinishFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/AdminFragment"
+        android:name="com.example.uahteam5blockchainapp.AdminFragment"
+        tools:layout="@layout/fragment_admin">
+
+        <action
+            android:id="@+id/action_AdminFragment_to_CreateUserFragment"
+            app:destination="@id/CreateUserFragment" />
+        <action
+            android:id="@+id/action_AdminFragment_to_LoginFragment"
+            app:destination="@id/LoginFragment" />
+        <action
+            android:id="@+id/action_AdminFragment_to_ViewDataFragment"
+            app:destination="@id/ViewDataFragment"/>
+    </fragment>
+
+    <fragment
+        android:id="@+id/CreateUserFragment"
+        android:name="com.example.uahteam5blockchainapp.CreateUserFragment"
+        tools:layout="@layout/fragment_create_user">
+
+        <action
+            android:id="@+id/action_CreateUserFragment_to_AdminFragment"
+            app:destination="@id/AdminFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/UploadFinishFragment"
+        android:name="com.example.uahteam5blockchainapp.UploadFinishFragment"
+        android:label="@string/uploadFinished"
+        tools:layout="@layout/fragment_upload_finish">
+
+        <action
+            android:id="@+id/action_UploadFinishFragment_to_FirstFragment"
+            app:destination="@id/FirstFragment" />
+        <action
+            android:id="@+id/action_UploadFinishFragment_to_ConfirmUploadFragment"
+            app:destination="@id/ConfirmUploadFragment" />
+        <action
+            android:id="@+id/action_UploadFinishFragment_to_UploadFragment"
+            app:destination="@id/UploadFragment" />
+    </fragment>
+
+    <!-- Fragment to list the files the device has shared and their hashes -->
+    <fragment
+        android:id="@+id/FilesFragment"
+        android:name="com.example.uahteam5blockchainapp.FilesFragment"
+        android:label="@string/FilesDownloaded"
+        tools:layout="@layout/fragment_files">
+
+        <action
+            android:id="@+id/action_FilesFragment_to_FirstFragment"
+            app:destination="@id/FirstFragment"/>
+    </fragment>
+
+    <!-- Fragment to view data -->
+    <fragment
+        android:id="@+id/ViewDataFragment"
+        android:name="com.example.uahteam5blockchainapp.ViewDataFragment"
+        tools:layout="@layout/fragment_viewdata">
+
+        <action
+            android:id="@+id/action_ViewDataFragment_to_AdminFragment"
+            app:destination="@id/AdminFragment"/>
+
+    </fragment>
+
+</navigation>

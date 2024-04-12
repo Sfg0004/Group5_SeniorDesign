@@ -1,0 +1,51 @@
+<!-- fragment_download.xml -->
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <!--Can be used if we want to stick a logo at the bottom-->
+    <ScrollView
+        android:layout_width="362dp"
+        android:layout_height="630dp"
+        android:layout_below="@+id/ContentDescription"
+        android:contentDescription="@string/description_of_what_s_shown_in_the_scroll_box_below">
+
+        <!-- Shows list of the files the user can download -->
+        <TextView
+            android:id="@+id/Content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:visibility="visible"
+
+            />
+    </ScrollView>
+
+    <!-- Toggleable button at the top to select multiple files to download -->
+    <TextView
+        android:id="@+id/ContentDescription"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:visibility="visible"
+        android:textSize="28sp"
+        android:text="@string/blockchain" />
+
+
+    <!-- Button handler for the cancel upload option -->
+    <Button
+        android:id="@+id/Done"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="26dp"
+        android:layout_centerHorizontal="true"
+        android:backgroundTint="#0077C8"
+        android:text="@string/done"
+        android:textSize="18sp" />
+
+</RelativeLayout>

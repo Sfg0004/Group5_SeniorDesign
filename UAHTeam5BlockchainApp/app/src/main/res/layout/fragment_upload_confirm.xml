@@ -1,0 +1,152 @@
+<!-- fragment_upload.xml -->
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <!-- Note, there are 3 image view and text view, one for each possible option: image, file, folder -->
+    <ImageView
+        android:id="@+id/imageImportImage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:rotation="90"
+        android:src="@drawable/defaultimage"
+        android:layout_centerHorizontal="true"
+        android:layout_above="@id/imageImportText"
+        android:visibility="gone"
+        android:contentDescription="@string/representation_of_the_image_file_to_be_uploaded" />
+
+    <!-- Custom text view for an imported image -->
+    <!-- Will contain the text view for an imported image -->
+    <TextView
+        android:id="@+id/imageImportText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_above="@+id/usersToGiveAccessToText"
+        android:layout_marginBottom="12dp"
+        android:layout_marginTop="48dp"
+        android:text="@string/textImage"
+        android:visibility="gone"
+        />
+
+    <TextView
+        android:id="@+id/usersToGiveAccessToText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:text="@string/grant_access_to_users"
+        android:visibility="invisible"
+        />
+
+    <ImageView
+        android:id="@+id/fileImportImage"
+        android:layout_width="232dp"
+        android:layout_height="197dp"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:layout_marginBottom="6dp"
+        android:layout_above="@+id/fileImportText"
+        android:src="@drawable/folderimage"
+        android:visibility="gone"
+        android:contentDescription="@string/representation_of_the_image_file_to_be_uploaded" />
+
+    <!-- Custom text view for an imported file image -->
+    <!-- Will contain the text view for an imported file image -->
+    <TextView
+        android:id="@+id/fileImportText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_above="@+id/usersToGiveAccessToText"
+        android:layout_marginBottom="12dp"
+        android:layout_marginTop="24dp"
+        android:text="@string/textFile"
+        android:visibility="gone"
+        />
+
+    <ImageView
+        android:id="@+id/folderImportImage"
+        android:layout_width="232dp"
+        android:layout_height="197dp"
+        android:layout_centerHorizontal="true"
+        android:layout_above="@+id/folderImportText"
+        android:layout_marginBottom="6dp"
+        android:src="@drawable/multiplefolders"
+        android:visibility="gone" />
+
+    <!-- Custom text view for an imported folder image-->
+    <!-- Will contain the text view for an imported folder image-->
+    <TextView
+        android:id="@+id/folderImportText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_above="@+id/usersToGiveAccessToText"
+        android:layout_marginBottom="12dp"
+        android:layout_marginTop="24dp"
+        android:text="@string/textFolder"
+        android:visibility="gone"
+        />
+
+    <ScrollView
+        android:layout_width="362dp"
+        android:layout_height="290dp"
+        android:layout_above="@+id/DummyButton"
+        android:contentDescription="@string/list_of_users_to_give_access_to">
+
+
+        <!-- No plan for a multiple users access button -->
+        <!-- it will be assumed that whoever the user selects, will have access to -->
+        <!-- Shows list of the files the user can download -->
+        <LinearLayout
+            android:id="@+id/UsersToGiveAccessTo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:visibility="visible"
+
+            />
+    </ScrollView>
+
+
+    <!-- Dummy button to space out the other buttons -->
+    <Button
+        android:id="@+id/DummyButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/confirmUpload"
+        android:layout_centerHorizontal="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginTop="16dp"
+        android:visibility="invisible"
+        />
+
+    <!-- Button handler for the confirm upload option -->
+    <Button
+        android:id="@+id/ConfirmUpload"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/confirmUpload"
+        android:layout_alignParentBottom="true"
+        android:layout_toEndOf="@id/DummyButton"
+        android:layout_marginTop="16dp"
+        android:backgroundTint="#006400"
+        />
+
+    <!-- Button handler for the cancel upload option -->
+    <Button
+        android:id="@+id/CancelUpload"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/cancelUpload"
+        android:layout_alignParentBottom="true"
+        android:layout_toStartOf="@id/DummyButton"
+        android:layout_marginTop="16dp"
+        android:backgroundTint="#8B0000"
+        />
+
+</RelativeLayout>

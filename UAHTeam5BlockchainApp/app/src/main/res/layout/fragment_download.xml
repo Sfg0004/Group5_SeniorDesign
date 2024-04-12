@@ -1,0 +1,94 @@
+<!-- fragment_download.xml -->
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <!-- Text view to inform the user that there are no files downloaded-->
+    <TextView
+        android:id="@+id/noFiles"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/NoFiles"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:visibility="gone"
+        android:textAlignment="center"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        />
+
+    <!--android:layout_above="@id/UAHimageView"-->
+    <!--Can be used if we want to stick a logo at the bottom-->
+    <ScrollView
+        android:layout_width="362dp"
+        android:layout_height="659dp"
+        android:layout_below="@+id/downloadMultipleFiles"
+        android:contentDescription="@string/list_of_downloaded_files">
+
+        <!-- Shows list of the files the user can download -->
+        <LinearLayout
+            android:id="@+id/DownloadedFilesList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:visibility="visible"
+
+            />
+    </ScrollView>
+
+    <!-- Toggleable button at the top to select multiple files to download -->
+    <CheckBox
+        android:id="@+id/downloadMultipleFiles"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:visibility="invisible"
+        android:checked="false"
+        android:text="@string/download_multiple_files" />
+
+    <Button
+        android:id="@+id/NullButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/confirmUpload"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginTop="16dp"
+        android:visibility="invisible"
+        android:clickable="false"
+        android:textSize="16sp"
+        android:layout_marginBottom="16dp"
+        />
+
+    <!-- Button handler for confirm creation button -->
+    <Button
+        android:id="@+id/DownloadFiles"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/download"
+        android:layout_alignParentBottom="true"
+        android:layout_toEndOf="@id/NullButton"
+        android:layout_marginBottom="16dp"
+        android:textSize="18sp"
+        android:backgroundTint="#0077C8"
+        />
+
+    <!-- Button handler for the cancel upload option -->
+    <Button
+        android:id="@+id/Done"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_marginEnd="21dp"
+        android:layout_marginBottom="16dp"
+        android:layout_toStartOf="@id/NullButton"
+        android:backgroundTint="#0077C8"
+        android:text="@string/done"
+        android:textSize="18sp" />
+
+</RelativeLayout>
