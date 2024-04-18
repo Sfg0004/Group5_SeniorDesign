@@ -28,9 +28,9 @@ import multiprocessing
 block_lock = threading.Lock()
 client_lock = threading.Lock()
 
-clientOut = open('clientOut.txt','w')
+clientOut = open('logs/clientOut.txt','w')
 
-blockFile = open('blockFile.txt','w')
+blockFile = open('logs/blockFile.txt','w')
 
 
 #FUNCTIONS
