@@ -252,6 +252,7 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
     
     comm.bindasServer(connectport, server)
     comm.listenforRequests(connectport, server)
+    blockchain2 = assembleBlockchain()
     
     time.sleep(0.5)
     try:
@@ -277,6 +278,8 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
 
                     print("create blockchain called")
                     parent_to_child.put(towrite)
+                    server_to_self_samaritan.put("new: blockchain:")
+                    server_to_self_samaritan.put(towrite)
                     # print(f"qsize2: {parent_to_child.qsize()}")
                     print("***** LOGIN NOW GO GO GO")
 
@@ -331,22 +334,27 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
                     # time.sleep(0.5)
 
                     data = "BLOCKCHAIN"
+                    if(not server_to_self_samaritan.empty()):
+                        abc = server_to_self_samaritan.get()
+                        if (abc == "new blockchain:"):
+                            blockchain2 = server_to_self_samaritan.get()
+                   
 
                     while(1):
                         # time.sleep(4)
-                        print(f"qsize child IMMEDIATELY: {parent_to_child.qsize()}")                       
+                        print(f"qsize child IMMEDIATELY: {server_to_self_samaritan.qsize()}")                       
                         time.sleep(.15)
-                        if not new_client_for_samaritan.empty():
+                        if (not new_client_for_samaritan.empty()):
                             new_neighbor = new_client_for_samaritan.get()
                             neighbor_nodes.append(new_neighbor)
                             print("Appended neighbor: ", neighbor_nodes)
-                        if(not parent_to_child.empty()):
-                            blockchain2 = parent_to_child.get()
-                        if(not server_to_self_samaritan.empty):
+
+                        if(not server_to_self_samaritan.empty()):
                             call = server_to_self_samaritan.get()
                             if(call=="new blockchain:"):
                                 call = server_to_self_samaritan.get()
                                 convertString(call)
+                                blockchain2 = assembleBlockchain()
                     
                         for n in neighbor_nodes:
                             #print("listening for blk request")
