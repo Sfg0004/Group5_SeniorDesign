@@ -146,6 +146,7 @@ def main():
     server_to_client = Queue()
 
     server_to_self_samaritan = Queue()
+    server_to_self_samaritan_winner = Queue() #multiprocessing?
     self_samaritan_to_server = Queue()
 
     server_input_to_server = Queue()
@@ -159,10 +160,10 @@ def main():
     time.sleep(1)
     
 
-    threading.Thread(target=run_server, args=(parent_to_child,validator,new_client_for_samaritan,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server,)).start()
+    threading.Thread(target=run_server, args=(parent_to_child,validator,new_client_for_samaritan,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan_winner,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server,)).start()
     time.sleep(2)
 
-    threading.Thread(target=run_client, args=(parent_to_child,new_client_for_samaritan,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server,)).start()
+    threading.Thread(target=run_client, args=(parent_to_child,new_client_for_samaritan,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan_winner,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server,)).start()
 
     # Handle candidate blocks in a separate thread
     # Define the lambda function
@@ -173,7 +174,7 @@ def main():
     GUI.root = GUI.setScenes()
     GUI.root.mainloop()
 
-def run_client(parent_to_child,new_client_for_samaritan,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server):#self_samaritan_to_client,client_to_self_samaritan): #needs periodic ip requesting(checking) added
+def run_client(parent_to_child,new_client_for_samaritan,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,server_to_self_samaritan_winner,self_samaritan_to_server,server_input_to_server):#self_samaritan_to_client,client_to_self_samaritan): #needs periodic ip requesting(checking) added
     comm.write_to_client_out("debug, in client\n")
     
     # initial_samaritan_jointo_ip = "10.4.153.165"
@@ -242,7 +243,7 @@ def run_client(parent_to_child,new_client_for_samaritan,self_samaritan_to_client
     except:
         comm.clientOut.close() 
 
-def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server):#self_samaritan_to_client, client_to_self_samaritan): #add func to talk to samaritan and samaritan to listen to server (listenServer)
+def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan_winner,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server):#self_samaritan_to_client, client_to_self_samaritan): #add func to talk to samaritan and samaritan to listen to server (listenServer)
     global receiveport
     global givenport
     global blockchainMessage
@@ -285,9 +286,11 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
                     while len(blockchain) < 1:
                         time.sleep(0.25)
                     print("Got blockchain!")
-                elif(call=="new blockchain:")
+                elif(call=="new blockchain:"):
                     call = client_to_server.get()
                     convertString(call)
+                    news = assembleBlockchain()
+                    server_to_self_samaritan.put(news)
                     
             # **********************************************************
 
@@ -339,10 +342,10 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
                             print("Appended neighbor: ", neighbor_nodes)
                         if(not parent_to_child.empty()):
                             blockchain2 = parent_to_child.get()
-                        if(not client_to_server.empty)
-                            call = client_to_server.get()
-                            if(call=="new blockchain:")
-                                call = client_to_server.get()
+                        if(not server_to_self_samaritan.empty):
+                            call = server_to_self_samaritan.get()
+                            if(call=="new blockchain:"):
+                                call = server_to_self_samaritan.get()
                                 convertString(call)
                     
                         for n in neighbor_nodes:
@@ -363,8 +366,8 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
                                 print("\n\nsent")
 
                         #NEED ADMIN BLOCK
-                        while(not server_to_self_samaritan.empty()):
-                            winner = server_to_self_samaritan.get() #blocking call
+                        while(not server_to_self_samaritan_winner.empty()):
+                            winner = server_to_self_samaritan_winner.get() #blocking call
                             if(winner):
                                 blockchain.append(winner)
 
@@ -428,7 +431,7 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
         print("it's the outer except")
         pass
 
-def pickWinner(server_to_self_samaritan, parent_to_child):
+def pickWinner(server_to_self_samaritan_winner, parent_to_child):
     print("\nPicking winner...")
     while stopThreads == False:
         time.sleep(.15) # .15 second refresh
@@ -453,12 +456,12 @@ def pickWinner(server_to_self_samaritan, parent_to_child):
                             blockchain.append(newBlock)
                             printBlockchain()
                             GUI.setGUIBlockchain(blockchain)
-                            server_to_self_samaritan.put(newBlock)
+                            server_to_self_samaritan_winner.put(newBlock)
                         else:
                             blockchain.append(block)
                             printBlockchain()
                             GUI.setGUIBlockchain(blockchain)
-                            server_to_self_samaritan.put(block)
+                            server_to_self_samaritan_winner.put(block)
                             blk = assembleBlock(block)
                             parent_to_child.put(blk)
 
