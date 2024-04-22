@@ -39,8 +39,8 @@ self_samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # neighbor2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 neighbor_nodes = []
 initial_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-connectport = 11436
-givenport = 12436
+connectport = 11441
+givenport = 12441
 
 # BLOCK.PY CLASSES
 class Validator:
@@ -330,12 +330,13 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
                             new_neighbor = new_client_for_samaritan.get()
                             neighbor_nodes.append(new_neighbor)
                             print("Appended neighbor: ", neighbor_nodes)
-                        blockchain2 = parent_to_child.get()
+                        if(not parent_to_child.empty()):
+                            blockchain2 = parent_to_child.get()
                         for n in neighbor_nodes:
-                            print("listening for blk request")
-                            recvd_msg = comm.receivedatafromneighbor(n)
+                            #print("listening for blk request")
+                            #recvd_msg = comm.receivedatafromneighbor(n)
                             # print("Got a blk request!")
-                            if(recvd_msg == "requesting your blockchain"):
+                            #if(recvd_msg == "requesting your blockchain"):
                                 print("sending blkchn")
 
                                 #while(parent_to_child.empty()):
@@ -377,7 +378,7 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
                     requester = comm.acceptconnectportConnection(server) #sit waiting/ready for new clients
                     comm.receivedatafromrequester(requester)
                     comm.approveConnection(requester, givenport) #I tell client what port to talk to me on
-                    receiveport = comm.setreceiveequal(givenport)
+                   # receiveport = comm.setreceiveequal(givenport)
                     #givenport = comm.incgiven(givenport)
                     print("Waiting for sustained requests")
                     #comm.closerequesterConnection(requester)
@@ -394,7 +395,7 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
                     requester = comm.acceptconnectportConnection(server) #sit waiting/ready for new clients
                     comm.receivedatafromrequester(requester)
                     comm.approveConnection(requester, givenport) #I tell client what port to talk to me on
-                    receiveport = comm.setreceiveequal(givenport)
+                    #receiveport = comm.setreceiveequal(givenport)
                     #givenport = comm.incgiven(givenport)
                     print("Waiting for sustained requests")
                     #comm.closerequesterConnection(requester)
