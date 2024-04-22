@@ -288,7 +288,7 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
             comm.receivedatafromrequester(requester)
             comm.approveConnection(requester, givenport) #I tell client what port to talk to me on
             receiveport = comm.setreceiveequal(givenport)
-            givenport = comm.incgiven(givenport)
+            #givenport = comm.incgiven(givenport)
             comm.closerequesterConnection(requester)
 
             if(1):
@@ -329,6 +329,7 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
                         if not new_client_for_samaritan.empty():
                             new_neighbor = new_client_for_samaritan.get()
                             neighbor_nodes.append(new_neighbor)
+                            print("Appended neighbor: ", neighbor_nodes)
                         blockchain2 = parent_to_child.get()
                         for n in neighbor_nodes:
                             print("listening for blk request")
@@ -337,8 +338,8 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
                             if(recvd_msg == "requesting your blockchain"):
                                 print("sending blkchn")
 
-                                while(parent_to_child.empty()):
-                                    time.sleep(.1)
+                                #while(parent_to_child.empty()):
+                                time.sleep(.5)
 
                                 print("Passed parent_to_child loop!")
                                 
@@ -370,17 +371,44 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
                                             # accept incoming connections
 
                     # **********************************************************
+                    print("waiting on new clients")
 
+                    #accepting 3rd client
                     requester = comm.acceptconnectportConnection(server) #sit waiting/ready for new clients
                     comm.receivedatafromrequester(requester)
                     comm.approveConnection(requester, givenport) #I tell client what port to talk to me on
                     receiveport = comm.setreceiveequal(givenport)
                     givenport = comm.incgiven(givenport)
+                    print("Waiting for sustained requests")
                     #comm.closerequesterConnection(requester)
                     new_neighbor = comm.acceptConnection(self_samaritan) #wait here for client's sustained request
+                    print("1")
                     blockchainMess = assembleBlockchain()
+                    print("2")
                     comm.senddatatoneighbor(new_neighbor, blockchainMess)
+                    print("3")
                     new_client_for_samaritan.put(new_neighbor)
+                    print("New neighbor added to queue")
+
+                    #accepting 4th client
+                    requester = comm.acceptconnectportConnection(server) #sit waiting/ready for new clients
+                    comm.receivedatafromrequester(requester)
+                    comm.approveConnection(requester, givenport) #I tell client what port to talk to me on
+                    receiveport = comm.setreceiveequal(givenport)
+                    givenport = comm.incgiven(givenport)
+                    print("Waiting for sustained requests")
+                    #comm.closerequesterConnection(requester)
+                    new_neighbor = comm.acceptConnection(self_samaritan) #wait here for client's sustained request
+                    print("1")
+                    blockchainMess = assembleBlockchain()
+                    print("2")
+                    comm.senddatatoneighbor(new_neighbor, blockchainMess)
+                    print("3")
+                    new_client_for_samaritan.put(new_neighbor)
+                    print("New neighbor added to queue")
+
+                    while(1):
+                        time.sleep(1)
 
     except OSError:
         print("it's the outer except")
