@@ -198,6 +198,7 @@ def run_client(parent_to_child,new_client_for_samaritan,self_samaritan_to_client
             break
         except:
             comm.write_to_client_out("I am client. My request to connect to a server failed.")
+            time.sleep(.5)
             if (len(blockchain) == 0) and not hasCalledCreateBlockchain:
                 print("Calling create blockchain!")
                 client_to_server.put("call create blockchain")
@@ -228,8 +229,10 @@ def run_client(parent_to_child,new_client_for_samaritan,self_samaritan_to_client
             
             recvd_chain = comm.receivedatafromsamaritan(client)
             convertString(recvd_chain)
+            client_to_server.put("new blockchain:")
+            client_to_server.put(recvd_chain)
 
-            # time.sleep(3) #rn iplist updates every second
+            time.sleep(.45) #rn iplist updates every second
 
             while(not server_to_client.empty()):
                 receivedblock = server_to_client.get()
@@ -282,6 +285,10 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
                     while len(blockchain) < 1:
                         time.sleep(0.25)
                     print("Got blockchain!")
+                elif(call=="new blockchain:")
+                    call = client_to_server.get()
+                    convertString(call)
+                    
             # **********************************************************
 
             requester = comm.acceptconnectportConnection(server) #sit waiting/ready for new clients
@@ -332,6 +339,12 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
                             print("Appended neighbor: ", neighbor_nodes)
                         if(not parent_to_child.empty()):
                             blockchain2 = parent_to_child.get()
+                        if(not client_to_server.empty)
+                            call = client_to_server.get()
+                            if(call=="new blockchain:")
+                                call = client_to_server.get()
+                                convertString(call)
+                    
                         for n in neighbor_nodes:
                             #print("listening for blk request")
                             #recvd_msg = comm.receivedatafromneighbor(n)
@@ -340,7 +353,7 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
                                 print("sending blkchn")
 
                                 #while(parent_to_child.empty()):
-                                time.sleep(.5)
+                                time.sleep(2)
 
                                 print("Passed parent_to_child loop!")
                                 
