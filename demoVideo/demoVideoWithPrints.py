@@ -378,7 +378,7 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
                     comm.receivedatafromrequester(requester)
                     comm.approveConnection(requester, givenport) #I tell client what port to talk to me on
                     receiveport = comm.setreceiveequal(givenport)
-                    givenport = comm.incgiven(givenport)
+                    #givenport = comm.incgiven(givenport)
                     print("Waiting for sustained requests")
                     #comm.closerequesterConnection(requester)
                     new_neighbor = comm.acceptConnection(self_samaritan) #wait here for client's sustained request
@@ -395,7 +395,7 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
                     comm.receivedatafromrequester(requester)
                     comm.approveConnection(requester, givenport) #I tell client what port to talk to me on
                     receiveport = comm.setreceiveequal(givenport)
-                    givenport = comm.incgiven(givenport)
+                    #givenport = comm.incgiven(givenport)
                     print("Waiting for sustained requests")
                     #comm.closerequesterConnection(requester)
                     new_neighbor = comm.acceptConnection(self_samaritan) #wait here for client's sustained request
@@ -769,6 +769,3 @@ def getBlockchain():
 
 if __name__ == "__main__":
     main()
-
-
-
