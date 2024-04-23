@@ -376,8 +376,9 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
                         #NEED ADMIN BLOCK
                         while(not server_to_self_samaritan_winner.empty()):
                             winner = server_to_self_samaritan_winner.get() #blocking call
-                            if(winner):
-                                blockchain.append(winner)
+                            convertString(winner)
+                            #if(winner):
+                              #  blockchain.append(winner)
 
                             print("Blockchain updated by server")
                         
@@ -469,9 +470,11 @@ def pickWinner(server_to_self_samaritan_winner, parent_to_child):
                             blockchain.append(block)
                             printBlockchain()
                             GUI.setGUIBlockchain(blockchain)
-                            server_to_self_samaritan_winner.put(block)
+                            #server_to_self_samaritan_winner.put(block)
                             blk = assembleBlock(block)
+                            server_to_self_samaritan.put("block:")
                             parent_to_child.put(blk)
+                            server_to_self_samaritan_winner.put(blk)
 
                         candidateBlocks.remove(block)
                         changeFlag = True
