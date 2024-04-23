@@ -242,7 +242,9 @@ def run_client(parent_to_child,new_client_for_samaritan,self_samaritan_to_client
                 receivedblock = server_to_client.get()
                 blockchain.append(receivedblock)
                 comm.senddatafromclient("new block:")
-                comm.senddatafromclient(receivedblock)
+                bmess = assembleBlock(receivedblock)
+                comm.senddatafromclient(bmess)
+
             printBlockchain()
     except:
         comm.clientOut.close() 
@@ -487,6 +489,9 @@ def listenNeighbor(parent_to_child,validator,new_client_for_samaritan,self_samar
         recvd_msg = comm.receivedatafromneighbor(n)
         if recvd_msg == "neighbor block:":
             recvd_msg = comm.receivedatafromneighbor(n)
+            newNeighborBlock = convertBlock(recvd_msg)
+            parent_to_child.put(newNeighborBlock)
+
 
 
 def runInput(server_input_to_server, validator):
@@ -722,6 +727,70 @@ def convertString(currentBlockchain):
         i += 1
     GUI.setGUIBlockchain(blockchain)
     return result
+
+def convertBlock(currentBlockchain):
+    blockDictionary = {}
+    delimiters = ["\n"]
+    for delimiter in delimiters:
+        currentBlockchain = " ".join(currentBlockchain.split(delimiter))
+    result = currentBlockchain.split()
+    #print(result)
+    i = 0
+    blockDictionary["Previous_Hash"] = "Default"
+    blockDictionary["Validator"] = "Default"
+    blockDictionary["Hash"] = "hash"
+    accessList = []
+    for item in result:
+        if item == "Index:":
+            blockDictionary["Index"] = result[i + 1]
+        elif item == "Timestamp:":
+            blockDictionary["Timestamp"] = result[i + 1]+ " " + result[i+2]
+        elif item == "Previous_Hash:":
+            blockDictionary["Previous_Hash"] = result[i + 1]
+        elif item == "Hash:":
+            blockDictionary["Hash"] = result[i + 1]
+        elif item == "Validator:":
+            blockDictionary["Validator"] = result[i + 1]
+        elif item == "IPFS_Hash:":
+            blockDictionary["IPFS_Hash"] = result[i + 1]
+        elif item == "File_Name:":
+            blockDictionary["File_Name"] = result[i + 1]
+        elif item == "Username:":
+            blockDictionary["Username"] = result[i + 1]
+        elif item == "Password:":
+            blockDictionary["Password"] = result[i + 1]
+        elif item == "Role:":
+            blockDictionary["Role"] = result[i + 1]
+        elif item == "Type:":
+            blockDictionary["Type"] = result[i + 1]
+            if blockDictionary['Type'] == 'Create_Account':
+                print("I made it to account")
+                username = blockDictionary['Username']
+                password = blockDictionary['Password']
+                role = blockDictionary['Role']
+                fullLegalName = "admin"
+                payload = Account(username, password, role, fullLegalName)
+            elif (blockDictionary['Type'] == 'Upload') or (blockDictionary['Type'] == 'Download'):
+                print("I made it to upload/download")
+                ipfsHash = blockDictionary['IPFS_Hash']
+                fileName = blockDictionary['File_Name']
+                validator = blockDictionary['Validator']
+                payload = FileData(ipfsHash, fileName, validator, accessList)
+            else:
+                print(f"block type is: {blockDictionary['Type']}")
+                payload = FileData("", "", "", accessList)
+            index = int(blockDictionary['Index'])
+            timestamp = blockDictionary['Timestamp']
+            prevHash = blockDictionary['Previous_Hash']
+            hash = blockDictionary['Hash']
+            validatorName = blockDictionary['Validator']
+            transactionType = blockDictionary['Type']
+            newBlock = GivenBlock(index, timestamp, prevHash, hash, validatorName, transactionType, payload)
+            blockchain.append(newBlock)
+
+        i += 1
+    GUI.setGUIBlockchain(blockchain)
+    return newBlock
 
 def createValidator(currentAccount):
     #Randomly stakes coins to prevent a favored node
