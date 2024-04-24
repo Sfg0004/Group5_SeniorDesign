@@ -499,22 +499,61 @@ def listenNeighbor(parent_to_child,validator,new_client_for_samaritan,self_samar
 def run_LW(lw_to_full):
     comm.bindasServer(LWport, lwserver)
     #lightweight1.bind((myip, LWport)) 
-    myip = myIP()
-    comm.listenforLWRequests(LWport,lwserver)
-    lw1 = comm.acceptconnectportConnection(lwserver) #sit waiting/ready for new clients
-    lwMsg = comm.receivedatafromrequester(lw1)
     while(1):
-        if(lwMsg == "Get_Blockchain"):
-            sendBlckchn = assembleBlockchain()
-            comm.senddatatorequester(lw1,sendBlckchn)
-            print("sent message")
-            lwMsg = " "
-        elif(lwMsg == "Upload_File" or "Download_File" or "Create_User"):
-            lwBlock = comm.receivedatafromrequester(lw1)
-            #returnedLW = convertBlock(lwBlock)
-            #lw_to_full.put(returnedLW)
-            lwMsg = " "
-        time.sleep(0.2)
+        connected = False
+        myip = myIP()
+        comm.listenforLWRequests(LWport,lwserver)
+        lw1 = comm.acceptconnectportConnection(lwserver) #sit waiting/ready for new clients
+        connected = True
+        lwMsg = comm.receivedatafromrequester(lw1)
+        while(connected):
+            if(lwMsg == "Get_Blockchain"):
+                sendBlckchn = assembleBlockchain()
+                comm.senddatatorequester(lw1,sendBlckchn)
+                print("sent message")
+                lwMsg = " "
+                lw1.close()
+                connected = False
+                
+            elif(lwMsg == "Upload_File"):
+                localHash = comm.receivedatafromrequester(lw1)
+                localFileName = comm.receivedatafromrequester(lw1)
+                localAuthor = comm.receivedatafromrequester(lw1)
+                localAccessList = comm.receivedatafromrequester(lw1)
+                newBlockToAdd = FileData(localHash, localFileName, localAuthor, localAccessList)
+                transactionType = "Upload"
+                generateBlock(blockchain[-1], "default", transactionType, newBlockToAdd)
+                lwMsg = " "
+                lw1.close()
+                connected = False
+
+            elif(lwMsg == "Download_File"):
+                authorizingUser = comm.receivedatafromrequester(lw1)
+                localHash = comm.receivedatafromrequester(lw1)
+                localFileName = comm.receivedatafromrequester(lw1)
+                localAuthor = comm.receivedatafromrequester(lw1)
+                localAccessList = comm.receivedatafromrequester(lw1)
+                newBlockToAdd = FileData(localHash, localFileName, localAuthor, localAccessList)
+                transactionType = "Download"
+                generateBlock(blockchain[-1], "default", transactionType, newBlockToAdd)
+                lwMsg = " "
+                lw1.close()
+                connected = False
+
+            elif(lwMsg == "Create_User"):
+                authorizingUser = comm.receivedatafromrequester(lw1)
+                localUsername = comm.receivedatafromrequester(lw1)
+                localPassword = comm.receivedatafromrequester(lw1)
+                localRole = comm.receivedatafromrequester(lw1)
+                localLegalName = comm.receivedatafromrequester(lw1)
+                newBlockToAdd = Account(localUsername, localPassword, localRole, localLegalName)
+                transactionType = "Create_Account"
+                generateBlock(blockchain[-1], "default", transactionType, newBlockToAdd)
+                lwMsg = " "
+                lw1.close()
+                connected = False
+
+            time.sleep(0.2)
 
 def runInput(server_input_to_server, validator):
     print(f"Running runInput...")
