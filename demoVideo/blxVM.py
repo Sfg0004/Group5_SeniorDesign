@@ -116,7 +116,7 @@ apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6ImE0NmE4MmFjLWJlYjEtN
 blockchainMessage = "default_blockchain_message"
 
 def myIP():
-    return (ni.ifaddresses('enp0s3')[ni.AF_INET][0]['addr'])
+    return (ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr'])
 
 def signal_handler(sig, frame):
     #print('You pressed Ctrl+C!')
@@ -417,7 +417,7 @@ def run_server(child_to_parent,parent_to_child,validator,new_client_for_samarita
 
             #                 print("Blockchain updated by server")
                         
-            #     else: #SERVER
+               #else: #SERVER
                     # time.sleep(1.5)
                     
             inputThread = threading.Thread(target=runInput, args=(server_input_to_server,validator,))
