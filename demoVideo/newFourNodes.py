@@ -235,14 +235,16 @@ def run_client(parent_to_child,new_client_for_samaritan,self_samaritan_to_client
             # myblk = assembleBlockchain()
             # y = countOccurrences(myblk, word)]
 
-           
-
             p_split = workwith.split("Index:")
             temp = p_split[-1]
             temp2 = temp.split("\n")
             
             ind = temp2[0]
             rest = temp[1]
+
+
+            print("current index:", ind)
+            print("blckchn length:", len(blockchain))
 
             while rest.find("Index:")!= -1:
                 p_split = rest.split("Index:")
@@ -252,13 +254,16 @@ def run_client(parent_to_child,new_client_for_samaritan,self_samaritan_to_client
                 ind = temp2[0]
                 rest = temp[1]
 
-            
             recvdlen = int(ind) + 1
 
+            print("current index:", ind)
+            print("blckchn length:", len(blockchain))
             if(recvdlen > len(blockchain)):
+                print("abc")
                 convertString(recvd_chain)
                 client_to_server.put("new block update:")
                 client_to_server.put(recvd_chain)
+                print("converted string")
 
             # time.sleep(3) #rn iplist updates every second
 
@@ -315,9 +320,9 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
                         time.sleep(0.25)
                     print("Got blockchain!")
 
-                elif (call == "new block update:"):
+                elif (call == "new blockchain update:"):
                     call = client_to_server.get()
-                    coonvertString(call)
+                    convertString(call)
             # **********************************************************
 
             requester = comm.acceptconnectportConnection(server) #sit waiting/ready for new clients
@@ -371,7 +376,7 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
 
                         if(not client_to_server.empty()):
                             call = client_to_server.get()
-                            if (call == "new block update:"):
+                            if(call == "new blockchain:"):
                                 call = client_to_server.get()
                                 convertString(call)
 
@@ -409,7 +414,7 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
                     while(server_input_to_server.empty()):
                         time.sleep(.15)
 
-                    winnerThread = threading.Thread(target=pickWinner, args=(server_to_self_samaritan, parent_to_child,))
+                    winnerThread = threading.Thread(target=pickWinner, args=(server_to_client,server_to_self_samaritan, parent_to_child,))
                     winnerThread.start()
 
                                             # accept incoming connections
@@ -458,7 +463,7 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
         print("it's the outer except")
         pass
 
-def pickWinner(server_to_self_samaritan, parent_to_child):
+def pickWinner(server_to_client,server_to_self_samaritan, parent_to_child):
     print("\nPicking winner...")
     while stopThreads == False:
         time.sleep(.15) # .15 second refresh
@@ -484,11 +489,14 @@ def pickWinner(server_to_self_samaritan, parent_to_child):
                             printBlockchain()
                             GUI.setGUIBlockchain(blockchain)
                             server_to_self_samaritan.put(newBlock)
+                            server_to_client.put(newBlock)
                         else:
                             blockchain.append(block)
                             printBlockchain()
                             GUI.setGUIBlockchain(blockchain)
                             server_to_self_samaritan.put(block)
+                            server_to_client.put(newBlock)
+
                             blk = assembleBlock(block)
                             parent_to_child.put(blk)
 
@@ -525,13 +533,10 @@ def runInput(server_input_to_server, validator):
             payload = proposedBlock.payload
             if proposedBlock.transactionType == "Upload":
                 candidateBlock = addToCandidateBlocks("Upload", payload, validator)
-                server_input_to_server.put(candidateBlock)
             elif proposedBlock.transactionType == "Download":
                 candidateBlock = addToCandidateBlocks("Download", payload, validator)
-                server_input_to_server.put(candidateBlock)
             elif proposedBlock.transactionType == "Create_Account":
                 candidateBlock = addToCandidateBlocks("Create_Account", payload, validator)
-                server_input_to_server.put(candidateBlock)
             GUI.removeCandidateBlock(proposedBlock)
         time.sleep(0.1)
 
