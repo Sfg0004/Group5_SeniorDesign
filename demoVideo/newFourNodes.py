@@ -232,13 +232,24 @@ def run_client(parent_to_child,new_client_for_samaritan,self_samaritan_to_client
             # z = countOccurrences(recvd_chain, word)
 
             # myblk = assembleBlockchain()
-            # y = countOccurrences(myblk, word)
+            # y = countOccurrences(myblk, word)]
+
+           
 
             p_split = recvd_chain.split("Index:")
             temp = p_split[1]
             temp2 = temp.partition("\n")
             
             ind = temp2[0]
+            rest = temp[1]
+
+            while(rest.find("Index:"!= -1)):
+                p_split = recvd_chain.split("Index:")
+                temp = p_split[1]
+                temp2 = temp.partition("\n")
+                
+                ind = temp2[0]
+                rest = temp[1]
 
             if(ind > len(blockchain)):
                 convertString(recvd_chain)
