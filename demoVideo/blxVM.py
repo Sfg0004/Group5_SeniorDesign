@@ -133,6 +133,7 @@ def newBlockchain():
     GUI.setGUIBlockchain(blockchain)
 
 def main():
+    test = open('logs/test.txt', 'w')
     myip = comm.myIP()
 
     signal.signal(signal.SIGINT, signal_handler)
@@ -149,7 +150,6 @@ def main():
     self_samaritan_to_server = Queue()
 
     server_input_to_server = Queue()
-    blx = Queue()
 
     parent_to_child = multiprocessing.Queue()
     new_client_for_samaritan = multiprocessing.Queue()
@@ -160,7 +160,7 @@ def main():
     time.sleep(1)
     
 
-    threading.Thread(target=run_server, args=(blx,parent_to_child,validator,new_client_for_samaritan,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server,)).start()
+    threading.Thread(target=run_server, args=(parent_to_child,validator,new_client_for_samaritan,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server,)).start()
     time.sleep(2)
 
     threading.Thread(target=run_client, args=(parent_to_child,new_client_for_samaritan,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server,)).start()
@@ -218,7 +218,9 @@ def run_client(parent_to_child,new_client_for_samaritan,self_samaritan_to_client
 
         while(not server_to_client.empty()):
             receivedblock = server_to_client.get()
-            blockchain.append(receivedblock)
+            print("THIS IS THE RECIEVED BLOCK:", receivedblock)
+            client_to_server.put(receivedblock)
+            #blockchain.append(receivedblock)
         printBlockchain()
 
     try:
@@ -270,14 +272,18 @@ def run_client(parent_to_child,new_client_for_samaritan,self_samaritan_to_client
 
             while(not server_to_client.empty()):
                 receivedblock = server_to_client.get()
-                blockchain.append(receivedblock)
-
+                print("THIS IS THE RECIEVED BLOCK:", receivedblock)
+                client_to_self_samaritan.put("new blockchain:")
+                client_to_self_samaritan.put(receivedblock)
+                #blockchain.append(receivedblock)
+                print("NEW BLOCKCHAIN")
+                #
             
             printBlockchain()
     except:
         comm.clientOut.close() 
 
-def run_server(blx,parent_to_child,validator,new_client_for_samaritan,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server):#self_samaritan_to_client, client_to_self_samaritan): #add func to talk to samaritan and samaritan to listen to server (listenServer)
+def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server):#self_samaritan_to_client, client_to_self_samaritan): #add func to talk to samaritan and samaritan to listen to server (listenServer)
     global receiveport
     global givenport
     global blockchainMessage
@@ -376,10 +382,10 @@ def run_server(blx,parent_to_child,validator,new_client_for_samaritan,self_samar
             #             if(not parent_to_child.empty()):
             #                 blockchain2 = parent_to_child.get()
 
-            #             if(not client_to_server.empty()):
-            #                 call = client_to_server.get()
+            #             if(not client_to_self_samaritan.empty()):
+            #                 call = client_to_self_samaritan.get()
             #                 if(call == "new blockchain:"):
-            #                     call = client_to_server.get()
+            #                     call = client_to_self_samaritan.get()
             #                     convertString(call)
 
             #             for n in neighbor_nodes:
@@ -409,15 +415,14 @@ def run_server(blx,parent_to_child,validator,new_client_for_samaritan,self_samar
                         
                 #else: #SERVER
                     # time.sleep(1.5)
-                    
-                inputThread = threading.Thread(target=runInput, args=(blx,server_input_to_server,validator,))
-                inputThread.start()                    
-                #investigate whether candidate blocks is passed to pickwinner
+            
+            inputThread = threading.Thread(target=runInput, args=(server_input_to_server,validator,))
+            inputThread.start()                    
 
             # while(server_input_to_server.empty()):
-                    #time.sleep(.15)
+            #     time.sleep(.15)
 
-            winnerThread = threading.Thread(target=pickWinner, args=(blx,server_to_client,server_to_self_samaritan, parent_to_child,))
+            winnerThread = threading.Thread(target=pickWinner, args=(server_to_client,server_to_self_samaritan, parent_to_child,))
             winnerThread.start()
 
                                     # accept incoming connections
@@ -429,7 +434,7 @@ def run_server(blx,parent_to_child,validator,new_client_for_samaritan,self_samar
             requester = comm.acceptconnectportConnection(server) #sit waiting/ready for new clients
             comm.receivedatafromrequester(requester)
             comm.approveConnection(requester, givenport) #I tell client what port to talk to me on
-        # receiveport = comm.setreceiveequal(givenport)
+            # receiveport = comm.setreceiveequal(givenport)
             #givenport = comm.incgiven(givenport)
             print("Waiting for sustained requests")
             #comm.closerequesterConnection(requester)
@@ -460,58 +465,20 @@ def run_server(blx,parent_to_child,validator,new_client_for_samaritan,self_samar
             print("New neighbor added to queue")
 
             while(1):
-                    time.sleep(1)
+                time.sleep(1)
 
     except OSError:
         print("it's the outer except")
         pass
 
-def pickWinner(blx,server_to_client,server_to_self_samaritan, parent_to_child):
+def pickWinner(server_to_client,server_to_self_samaritan, parent_to_child):
     print("\nPicking winner...")
-    blxarray = []
-    while (not blx.empty()):
-        blxarray.append(blx.get())
     while stopThreads == False:
         time.sleep(.15) # .15 second refresh
         with validatorLock:   
             if len(validators) > 0:
                 lotteryWinner = getLotteryWinner().address
-                # for block in candidateBlocks:
-                #     isTheSameString = True
-                #     letterIndex = 0
-                #     for letter in validators[0].address:
-                #         if letter != lotteryWinner[letterIndex]:
-                #             isTheSameString = False
-                #         letterIndex += 1
-                #     if isTheSameString == True:
-                #         print(f"Found a validator with name: {lotteryWinner}")
-                #         # make sure candidate index isn't duplicated in existing blockchain (avoid forking):
-                #         indexes = []
-                #         for approvedBlock in blockchain:
-                #             indexes.append(approvedBlock.index)
-                #         if block.index in indexes: # account for forking
-                #             newBlock = generateBlock(blockchain[-1], block.validatorName, block.transactionType, block.payload)
-                #             blockchain.append(newBlock)
-                #             printBlockchain()
-                #             GUI.setGUIBlockchain(blockchain)
-                #             server_to_self_samaritan.put(newBlock)
-                #             server_to_client.put(newBlock)
-                #         else:
-                #             blockchain.append(block)
-                #             printBlockchain()
-                #             GUI.setGUIBlockchain(blockchain)
-                #             server_to_self_samaritan.put(block)
-                #             server_to_client.put(block)
-
-                #             blk = assembleBlock(block)
-                #             parent_to_child.put(blk)
-
-                #         candidateBlocks.remove(block)
-                #         changeFlag = True
-                #         blockchainMessage = assembleBlockchain()
-                #         break
-
-                for block in blxarray:
+                for block in candidateBlocks:
                     isTheSameString = True
                     letterIndex = 0
                     for letter in validators[0].address:
@@ -541,7 +508,7 @@ def pickWinner(blx,server_to_client,server_to_self_samaritan, parent_to_child):
                             blk = assembleBlock(block)
                             parent_to_child.put(blk)
 
-                        blxarray.remove(block)
+                        candidateBlocks.remove(block)
                         changeFlag = True
                         blockchainMessage = assembleBlockchain()
                         break
@@ -550,7 +517,7 @@ def pickWinner(blx,server_to_client,server_to_self_samaritan, parent_to_child):
                     print("length of validators is 0")
                     pass
 
-def runInput(blx,server_input_to_server, validator):
+def runInput(server_input_to_server, validator):
     print(f"Running runInput...")
     while True:
         while not GUI.isLoggedIn:
@@ -574,13 +541,10 @@ def runInput(blx,server_input_to_server, validator):
             payload = proposedBlock.payload
             if proposedBlock.transactionType == "Upload":
                 candidateBlock = addToCandidateBlocks("Upload", payload, validator)
-                blx.put(candidateBlock)
             elif proposedBlock.transactionType == "Download":
                 candidateBlock = addToCandidateBlocks("Download", payload, validator)
-                blx.put(candidateBlock)
             elif proposedBlock.transactionType == "Create_Account":
                 candidateBlock = addToCandidateBlocks("Create_Account", payload, validator)
-                blx.put(candidateBlock)
             GUI.removeCandidateBlock(proposedBlock)
         time.sleep(0.1)
 
