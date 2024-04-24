@@ -228,10 +228,19 @@ def run_client(parent_to_child,new_client_for_samaritan,self_samaritan_to_client
             comm.senddatafromclient("requesting your blockchain", client)
             
             recvd_chain = comm.receivedatafromsamaritan(client)
-            word = "Index:"
-            xyz = countOccurrences(recvd_chain, word)
+            # word = "Index:"
+            # z = countOccurrences(recvd_chain, word)
 
-            if(xyz > len(blockchain))
+            # myblk = assembleBlockchain()
+            # y = countOccurrences(myblk, word)
+
+            p_split = recvd_chain.split("Index:")
+            temp = p_split[1]
+            temp2 = temp.partition("\n")
+            
+            ind = temp2[0]
+
+            if(ind > len(blockchain)):
                 convertString(recvd_chain)
 
             # time.sleep(3) #rn iplist updates every second
@@ -253,6 +262,7 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
     
     comm.bindasServer(connectport, server)
     comm.listenforRequests(connectport, server)
+    blockchain2 = ""
     
     time.sleep(0.5)
     try:
@@ -786,7 +796,7 @@ def countOccurrences(str, word):
 		
 		# if match found increase count 
 		if (word == a[i]):
-		count = count + 1
+		    count = count + 1
 			
 	return count	 
 
