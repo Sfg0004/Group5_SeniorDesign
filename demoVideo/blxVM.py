@@ -116,7 +116,7 @@ apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6ImE0NmE4MmFjLWJlYjEtN
 blockchainMessage = "default_blockchain_message"
 
 def myIP():
-    return (ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr'])
+    return (ni.ifaddresses('enp0s3')[ni.AF_INET][0]['addr'])
 
 def signal_handler(sig, frame):
     #print('You pressed Ctrl+C!')
@@ -333,143 +333,143 @@ def run_server(child_to_parent,parent_to_child,validator,new_client_for_samarita
                     convertString(call)
             # **********************************************************
 
+            # requester = comm.acceptconnectportConnection(server) #sit waiting/ready for new clients
+            # comm.receivedatafromrequester(requester)
+            # comm.approveConnection(requester, givenport) #I tell client what port to talk to me on
+            # receiveport = comm.setreceiveequal(givenport)
+            # #givenport = comm.incgiven(givenport)
+            # comm.closerequesterConnection(requester)
+
+            # if(1):
+            #     ppid = os.getpid()
+            #     print("Parent process1 PID:", ppid)
+            #     child_pid = os.fork()
+            #     #samaritan runs child, server stays parent
+            #     if child_pid == 0:            #   This code is executed by the child process\
+            #         #probably need a read for block 6
+            #         while not isValidAddress:
+            #             try:
+            #                 time.sleep(.1)
+
+            #                 myip = comm.myIP()
+            #                 self_samaritan.bind((myip, receiveport)) 
+            #                 print(f"receiveport is: {receiveport}")
+                            
+            #                 self_samaritan.listen(0)
+            #                 neighbor = comm.acceptConnection(self_samaritan) #wait here for client's sustained request
+            #                 neighbor_nodes.append(neighbor)
+
+            #                 isValidAddress = True
+            #             except OSError as e:
+            #                 print("\n*** OS error occurred:", e.strerror)
+            #                 print("Error code:", errno.errorcode[e.errno])
+            #                 print("Error arguments:", e.args)
+            #                 pass
+
+
+            #         # time.sleep(0.5)
+
+            #         data = "BLOCKCHAIN"
+
+            #         while(1):
+            #             # time.sleep(4)
+            #             print(f"qsize child IMMEDIATELY: {parent_to_child.qsize()}")                       
+            #             time.sleep(.15)
+            #             if not new_client_for_samaritan.empty():
+            #                 new_neighbor = new_client_for_samaritan.get()
+            #                 neighbor_nodes.append(new_neighbor)
+            #                 print("Appended neighbor: ", neighbor_nodes)
+            #             if(not parent_to_child.empty()):
+            #                 blockchain2 = parent_to_child.get()
+
+            #             if(not child_to_parent.empty()):
+            #                 blockchain2 = child_to_parent.get()
+
+            #             if(not client_to_self_samaritan.empty()):
+            #                 call = client_to_self_samaritan.get()
+            #                 if(call == "new blockchain:"):
+            #                     call = client_to_self_samaritan.get()
+            #                     convertString(call)
+
+
+            #             for n in neighbor_nodes:
+            #                 #print("listening for blk request")
+            #                 #recvd_msg = comm.receivedatafromneighbor(n)
+            #                 # print("Got a blk request!")
+            #                 #if(recvd_msg == "requesting your blockchain"):
+            #                 print("sending blkchn")
+
+            #                 #while(parent_to_child.empty()):
+            #                 time.sleep(.5)
+
+            #                 print("Passed parent_to_child loop!")
+                            
+            #                 print(f"sending {blockchain2}")
+            #                 print("*** Sending data to neighbor!")
+            #                 comm.senddatatoneighbor(n, blockchain2)
+            #                 print("\n\nsent")
+
+            #             #NEED ADMIN BLOCK
+            #             while(not server_to_self_samaritan.empty()):
+            #                 winner = server_to_self_samaritan.get() #blocking call
+            #                 if(winner):
+            #                     blockchain.append(winner)
+
+            #                 print("Blockchain updated by server")
+                        
+            #     else: #SERVER
+                    # time.sleep(1.5)
+                    
+            inputThread = threading.Thread(target=runInput, args=(server_input_to_server,validator,))
+            inputThread.start()                    
+
+            # while(server_input_to_server.empty()):
+            #     time.sleep(.15)
+
+            winnerThread = threading.Thread(target=pickWinner, args=(server_to_client,server_to_self_samaritan, parent_to_child,))
+            winnerThread.start()
+
+                                    # accept incoming connections
+
+            # **********************************************************
+            print("waiting on new clients")
+
+            #accepting 3rd client
             requester = comm.acceptconnectportConnection(server) #sit waiting/ready for new clients
             comm.receivedatafromrequester(requester)
             comm.approveConnection(requester, givenport) #I tell client what port to talk to me on
-            receiveport = comm.setreceiveequal(givenport)
+            # receiveport = comm.setreceiveequal(givenport)
             #givenport = comm.incgiven(givenport)
-            comm.closerequesterConnection(requester)
+            print("Waiting for sustained requests")
+            #comm.closerequesterConnection(requester)
+            new_neighbor = comm.acceptConnection(self_samaritan) #wait here for client's sustained request
+            print("1")
+            blockchainMess = assembleBlockchain()
+            print("2")
+            comm.senddatatoneighbor(new_neighbor, blockchainMess)
+            print("3")
+            new_client_for_samaritan.put(new_neighbor)
+            print("New neighbor added to queue")
 
-            if(1):
-                ppid = os.getpid()
-                print("Parent process1 PID:", ppid)
-                child_pid = os.fork()
-                #samaritan runs child, server stays parent
-                if child_pid == 0:            #   This code is executed by the child process\
-                    #probably need a read for block 6
-                    while not isValidAddress:
-                        try:
-                            time.sleep(.1)
+            #accepting 4th client
+            requester = comm.acceptconnectportConnection(server) #sit waiting/ready for new clients
+            comm.receivedatafromrequester(requester)
+            comm.approveConnection(requester, givenport) #I tell client what port to talk to me on
+            #receiveport = comm.setreceiveequal(givenport)
+            #givenport = comm.incgiven(givenport)
+            print("Waiting for sustained requests")
+            #comm.closerequesterConnection(requester)
+            new_neighbor = comm.acceptConnection(self_samaritan) #wait here for client's sustained request
+            print("1")
+            blockchainMess = assembleBlockchain()
+            print("2")
+            comm.senddatatoneighbor(new_neighbor, blockchainMess)
+            print("3")
+            new_client_for_samaritan.put(new_neighbor)
+            print("New neighbor added to queue")
 
-                            myip = comm.myIP()
-                            self_samaritan.bind((myip, receiveport)) 
-                            print(f"receiveport is: {receiveport}")
-                            
-                            self_samaritan.listen(0)
-                            neighbor = comm.acceptConnection(self_samaritan) #wait here for client's sustained request
-                            neighbor_nodes.append(neighbor)
-
-                            isValidAddress = True
-                        except OSError as e:
-                            print("\n*** OS error occurred:", e.strerror)
-                            print("Error code:", errno.errorcode[e.errno])
-                            print("Error arguments:", e.args)
-                            pass
-
-
-                    # time.sleep(0.5)
-
-                    data = "BLOCKCHAIN"
-
-                    while(1):
-                        # time.sleep(4)
-                        print(f"qsize child IMMEDIATELY: {parent_to_child.qsize()}")                       
-                        time.sleep(.15)
-                        if not new_client_for_samaritan.empty():
-                            new_neighbor = new_client_for_samaritan.get()
-                            neighbor_nodes.append(new_neighbor)
-                            print("Appended neighbor: ", neighbor_nodes)
-                        if(not parent_to_child.empty()):
-                            blockchain2 = parent_to_child.get()
-
-                        if(not child_to_parent.empty()):
-                            blockchain2 = child_to_parent.get()
-
-                        if(not client_to_self_samaritan.empty()):
-                            call = client_to_self_samaritan.get()
-                            if(call == "new blockchain:"):
-                                call = client_to_self_samaritan.get()
-                                convertString(call)
-
-
-                        for n in neighbor_nodes:
-                            #print("listening for blk request")
-                            #recvd_msg = comm.receivedatafromneighbor(n)
-                            # print("Got a blk request!")
-                            #if(recvd_msg == "requesting your blockchain"):
-                            print("sending blkchn")
-
-                            #while(parent_to_child.empty()):
-                            time.sleep(.5)
-
-                            print("Passed parent_to_child loop!")
-                            
-                            print(f"sending {blockchain2}")
-                            print("*** Sending data to neighbor!")
-                            comm.senddatatoneighbor(n, blockchain2)
-                            print("\n\nsent")
-
-                        #NEED ADMIN BLOCK
-                        while(not server_to_self_samaritan.empty()):
-                            winner = server_to_self_samaritan.get() #blocking call
-                            if(winner):
-                                blockchain.append(winner)
-
-                            print("Blockchain updated by server")
-                        
-                else: #SERVER
-                    # time.sleep(1.5)
-                    
-                    inputThread = threading.Thread(target=runInput, args=(server_input_to_server,validator,))
-                    inputThread.start()                    
-
-                    # while(server_input_to_server.empty()):
-                    #     time.sleep(.15)
-
-                    winnerThread = threading.Thread(target=pickWinner, args=(server_to_client,server_to_self_samaritan, parent_to_child,))
-                    winnerThread.start()
-
-                                            # accept incoming connections
-
-                    # **********************************************************
-                    print("waiting on new clients")
-
-                    #accepting 3rd client
-                    requester = comm.acceptconnectportConnection(server) #sit waiting/ready for new clients
-                    comm.receivedatafromrequester(requester)
-                    comm.approveConnection(requester, givenport) #I tell client what port to talk to me on
-                   # receiveport = comm.setreceiveequal(givenport)
-                    #givenport = comm.incgiven(givenport)
-                    print("Waiting for sustained requests")
-                    #comm.closerequesterConnection(requester)
-                    new_neighbor = comm.acceptConnection(self_samaritan) #wait here for client's sustained request
-                    print("1")
-                    blockchainMess = assembleBlockchain()
-                    print("2")
-                    comm.senddatatoneighbor(new_neighbor, blockchainMess)
-                    print("3")
-                    new_client_for_samaritan.put(new_neighbor)
-                    print("New neighbor added to queue")
-
-                    #accepting 4th client
-                    requester = comm.acceptconnectportConnection(server) #sit waiting/ready for new clients
-                    comm.receivedatafromrequester(requester)
-                    comm.approveConnection(requester, givenport) #I tell client what port to talk to me on
-                    #receiveport = comm.setreceiveequal(givenport)
-                    #givenport = comm.incgiven(givenport)
-                    print("Waiting for sustained requests")
-                    #comm.closerequesterConnection(requester)
-                    new_neighbor = comm.acceptConnection(self_samaritan) #wait here for client's sustained request
-                    print("1")
-                    blockchainMess = assembleBlockchain()
-                    print("2")
-                    comm.senddatatoneighbor(new_neighbor, blockchainMess)
-                    print("3")
-                    new_client_for_samaritan.put(new_neighbor)
-                    print("New neighbor added to queue")
-
-                    while(1):
-                        time.sleep(1)
+            while(1):
+                time.sleep(1)
 
     except OSError:
         print("it's the outer except")
