@@ -228,6 +228,7 @@ def run_client(parent_to_child,new_client_for_samaritan,self_samaritan_to_client
             comm.senddatafromclient("requesting your blockchain", client)
             
             recvd_chain = comm.receivedatafromsamaritan(client)
+            workwith = recvd_chain
             # word = "Index:"
             # z = countOccurrences(recvd_chain, word)
 
@@ -236,23 +237,28 @@ def run_client(parent_to_child,new_client_for_samaritan,self_samaritan_to_client
 
            
 
-            p_split = recvd_chain.split("Index:")
-            temp = p_split[1]
-            temp2 = temp.partition("\n")
+            p_split = workwith.split("Index:")
+            temp = p_split[-1]
+            temp2 = temp.split("\n")
             
             ind = temp2[0]
             rest = temp[1]
 
-            while(rest.find("Index:"!= -1)):
-                p_split = recvd_chain.split("Index:")
-                temp = p_split[1]
-                temp2 = temp.partition("\n")
+            while rest.find("Index:")!= -1:
+                p_split = rest.split("Index:")
+                temp = p_split[-1]
+                temp2 = temp.split("\n")
                 
                 ind = temp2[0]
                 rest = temp[1]
 
-            if(ind > len(blockchain)):
+            
+            recvdlen = int(ind) + 1
+
+            if(recvdlen > len(blockchain)):
                 convertString(recvd_chain)
+                client_to_server.put("new block update:")
+                client_to_server.put(recvd_chain)
 
             # time.sleep(3) #rn iplist updates every second
 
@@ -308,6 +314,10 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
                     while len(blockchain) < 1:
                         time.sleep(0.25)
                     print("Got blockchain!")
+
+                elif (call == "new block update:"):
+                    call = client_to_server.get()
+                    coonvertString(call)
             # **********************************************************
 
             requester = comm.acceptconnectportConnection(server) #sit waiting/ready for new clients
@@ -358,6 +368,13 @@ def run_server(parent_to_child,validator,new_client_for_samaritan,self_samaritan
                             print("Appended neighbor: ", neighbor_nodes)
                         if(not parent_to_child.empty()):
                             blockchain2 = parent_to_child.get()
+
+                        if(not client_to_server.empty()):
+                            call = client_to_server.get()
+                            if (call == "new block update:"):
+                                call = client_to_server.get()
+                                convertString(call)
+
                         for n in neighbor_nodes:
                             #print("listening for blk request")
                             #recvd_msg = comm.receivedatafromneighbor(n)
