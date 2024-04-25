@@ -263,7 +263,6 @@ def run_client(child_to_parent,parent_to_child,new_client_for_samaritan,self_sam
             print("blckchn length:", len(blockchain))
             time.sleep(.1)
             if(recvdlen > len(blockchain)):
-                print("abc")
                 convertString(recvd_chain)
                 client_to_server.put("new block update:")
                 client_to_server.put(recvd_chain)
@@ -730,14 +729,12 @@ def convertString(currentBlockchain):
         elif item == "Type:":
             blockDictionary["Type"] = result[i + 1]
             if blockDictionary['Type'] == 'Create_Account':
-                print("I made it to account")
                 username = blockDictionary['Username']
                 password = blockDictionary['Password']
                 role = blockDictionary['Role']
                 fullLegalName = "admin"
                 payload = Account(username, password, role, fullLegalName)
             elif (blockDictionary['Type'] == 'Upload') or (blockDictionary['Type'] == 'Download'):
-                print("I made it to upload/download")
                 ipfsHash = blockDictionary['IPFS_Hash']
                 fileName = blockDictionary['File_Name']
                 validator = blockDictionary['Validator']
