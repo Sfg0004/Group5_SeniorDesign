@@ -28,7 +28,8 @@ import multiprocessing
 block_lock = threading.Lock()
 client_lock = threading.Lock()
 
-clientOut = open('logs/clientOut.txt','w')
+
+clientOut = open('logs/clientOut.txt', 'w')
 
 blockFile = open('logs/blockFile.txt','w')
 
@@ -47,21 +48,29 @@ def write_to_block_file(data):
         blockFile.write(data)
         blockFile.flush()
 
+
+def listenforLWRequests(port, server): #server method, connectport
+    # listen for incoming connections
+    server.listen(1)
+    server_ip = myIP()
+    print(f"I am server. Listening on {server_ip}:{port}")
+
+
 def acceptconnectportConnection(server): #server method, only for connectport
     requester_socket, requester_address = server.accept()
-    # print(f"I am server. Accepted connection from {requester_address[0]}:{requester_address[1]}")
+    print(f"I am server. Accepted connection from {requester_address[0]}:{requester_address[1]}")
     return requester_socket
 
 def listenforRequests(connectport, server): #server method, connectport
     # listen for incoming connections
-    server.listen(0)
+    server.listen(3)
     server_ip = myIP()
-    # print(f"I am server. Listening on {server_ip}:{connectport}")
+    print(f"I am server. Listening on {server_ip}:{connectport}")
 
 def receivedatafromrequester(requester_socket): #server method
     request = requester_socket.recv(4096)
     request = request.decode("utf-8") # convert bytes to string
-    # print(f"I am server. Received: {request}")
+    print(f"I am server. Received: '{request}'")
 
     return request
 
@@ -88,11 +97,11 @@ def closerequesterConnection(requester_socket): #server method
     time.sleep(0.5) #without the client sees "acceptedclosed"
     senddatatorequester(requester_socket, "closed")
     requester_socket.close()
-    # print("I am server. Connection to requester closed")
+    print("I am server. Connection to requester closed")
 
 def acceptConnection(self_samaritan): #self_samaritan method
     neighbor_socket, neighbor_address = self_samaritan.accept()
-    # print(f"I am self_samaritan. Accepted connection from {neighbor_address[0]}:{neighbor_address[1]}")
+    print(f"I am self_samaritan. Accepted connection from {neighbor_address[0]}:{neighbor_address[1]}")
     return neighbor_socket
 
 def closeneighborConnection(neighbor): #samaritan method
@@ -100,7 +109,7 @@ def closeneighborConnection(neighbor): #samaritan method
     senddatatoneighbor(neighbor, "closed")
     time.sleep(1)
     neighbor.close()
-    #print("I am samaritan. Connection to neighbor closed")
+    print("I am samaritan. Connection to neighbor closed")
 
 def receivedatafromserver(initial_client): #initial_client method
 
@@ -130,7 +139,7 @@ def requestConnection(server_ip, server_port, initial_client, givenport): #initi
 
         # receive message from the server
         response = receivedatafromserver(initial_client)
-
+        initial_client.close()
         #neighbor returns their self_samaritan connect data, which I see as my neighbor
         neighbor_ip, neighbor_port = extractIP(response)
 
@@ -163,7 +172,7 @@ def requestsustainedConnection(samaritan_ip, samaritan_port, client): #client me
 def listenServer(message_queue): #selfsamaritan method listen to server
     try:
         message = message_queue.get(timeout=1)  # Wait for a message
-        # print(f"received message: {message}")
+        print(f"received message: {message}")
     except queue.Empty:
         pass  # Continue waiting if queue is empty
 
@@ -191,7 +200,7 @@ def closesamaritanConnection(client): #client method
 def receivedatafromneighbor(neighbor_socket): #server method
     request = neighbor_socket.recv(4096)
     request = request.decode("utf-8") # convert bytes to string
-    #print(f"I am server. Received: {request}")
+    print(f"I am server. Received: {request}")
 
     return request
 
