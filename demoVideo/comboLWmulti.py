@@ -310,7 +310,6 @@ def run_server(lw_to_full,child_to_parent,parent_to_child,validator,new_client_f
 
                     print("create blockchain called")
                     parent_to_child.put(towrite)
-                    print("***** LOGIN NOW GO GO GO")
 
                 elif (call == "call login"):
                     print("login plz")
@@ -324,7 +323,7 @@ def run_server(lw_to_full,child_to_parent,parent_to_child,validator,new_client_f
                     convertString(call)
             # **********************************************************
 
-            threading.Thread(target=run_LW, args=(lw_to_full,)).start()
+            threading.Thread(target=run_LW, args=(lw_to_full,validator,)).start()#block needs to go into server_to _self_samaritan
 
             #moved these here so can add blocks before any connections occur
             inputThread = threading.Thread(target=runInput, args=(server_input_to_server,validator,))
@@ -388,7 +387,6 @@ def run_server(lw_to_full,child_to_parent,parent_to_child,validator,new_client_f
                                 print(f"sending {blockchain2}")
                                 print("*** Sending data to neighbor!")
                                 comm.senddatatoneighbor(n, blockchain2)
-                                print("\n\nsent")
 
                         #NEED ADMIN BLOCK
                         while(not server_to_self_samaritan.empty()):
@@ -401,9 +399,9 @@ def run_server(lw_to_full,child_to_parent,parent_to_child,validator,new_client_f
                 else: #SERVER
 
                     #check
-                    if(not lw_to_full.empty()):
-                        lwBlk = lw_to_full.get()
-                        blockchain.append(lwBlk)
+                    # if(not lw_to_full.empty()):
+                    #     lwBlk = lw_to_full.get()
+                    #     blockchain.append(lwBlk)
 
                     while(1):
                         time.sleep(1)
@@ -460,7 +458,7 @@ def pickWinner(server_to_client,server_to_self_samaritan, parent_to_child):
                     print("length of validators is 0")
                     pass
 
-def run_LW(lw_to_full):
+def run_LW(lw_to_full, validator):
 
     # WIP WILL NEED TO TEST THE ACTUAL GENERATION AND ADDING OF THE NEW BLOCK. DATA WAS RECEIVED
     # FROM THE LW DEVICE BUT WILL REQUIRE FORMMATTING FOR ACCESS LIST (UPLOAD)
@@ -489,14 +487,16 @@ def run_LW(lw_to_full):
                 connected = False
 
             elif(lwMsg == "Upload_File"):
-                localHash = comm.receivedatafromrequester(lw1)
-                localFileName = comm.receivedatafromrequester(lw1)
-                localAuthor = comm.receivedatafromrequester(lw1)
-                localAccessList = comm.receivedatafromrequester(lw1)
+                rcv = comm.receivedatafromrequester(lw1)
+                divided = rcv.split(' ')
+                print(divided)
+                localHash = divided[1]
+                localFileName = divided[2]
+                localAuthor = divided[3]
+                localAccessList = divided[4]
                 newBlockToAdd = FileData(localHash, localFileName, localAuthor, localAccessList)
                 transactionType = "Upload"
-                newblk = generateBlock(blockchain[-1], "default addr", transactionType, newBlockToAdd)
-                print(newblk)
+                newblk = generateBlock(blockchain[-1], validator.address, transactionType, newBlockToAdd)
                 lwMsg = " "
                 lw1.close()
                 blockchain.append(newblk)
@@ -504,33 +504,35 @@ def run_LW(lw_to_full):
                 #OORRRRR MAYBE
                 #lw_to_full.put(newblk)
 
-
-
                 connected = False
 
             elif(lwMsg == "Download_File"):
-                authorizingUser = comm.receivedatafromrequester(lw1)
-                localHash = comm.receivedatafromrequester(lw1)
-                localFileName = comm.receivedatafromrequester(lw1)
-                localAuthor = comm.receivedatafromrequester(lw1)
-                localAccessList = comm.receivedatafromrequester(lw1)
+                rcv = comm.receivedatafromrequester(lw1)
+                divided = rcv.split(' ')
+                print(divided)
+                localHash = divided[1]
+                localFileName = divided[2]
+                localAuthor = divided[3]
+                localAccessList = divided[4]
                 newBlockToAdd = FileData(localHash, localFileName, localAuthor, localAccessList)
                 transactionType = "Download"
-                newblk = generateBlock(blockchain[-1], "default addr", transactionType, newBlockToAdd)
+                newblk = generateBlock(blockchain[-1], validator.address, transactionType, newBlockToAdd)
                 lwMsg = " "
                 lw1.close()
                 blockchain.append(newblk)
                 connected = False
 
             elif(lwMsg == "Create_User"):
-                authorizingUser = comm.receivedatafromrequester(lw1)
-                localUsername = comm.receivedatafromrequester(lw1)
-                localPassword = comm.receivedatafromrequester(lw1)
-                localRole = comm.receivedatafromrequester(lw1)
-                localLegalName = comm.receivedatafromrequester(lw1)
+                rcv = comm.receivedatafromrequester(lw1)
+                divided = rcv.split(' ')
+                print(divided)
+                localUsername = divided[1]
+                localPassword = divided[2]
+                localRole = divided[3]
+                localLegalName = divided[4]
                 newBlockToAdd = Account(localUsername, localPassword, localRole, localLegalName)
                 transactionType = "Create_Account"
-                newblk = generateBlock(blockchain[-1], "default", transactionType, newBlockToAdd)
+                newblk = generateBlock(blockchain[-1], validator.address, transactionType, newBlockToAdd)
                 lwMsg = " "
                 lw1.close()
                 blockchain.append(newblk)
