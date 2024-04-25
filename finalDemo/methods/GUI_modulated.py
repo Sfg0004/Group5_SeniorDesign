@@ -56,9 +56,6 @@ class Block:
         self.hash = self.calculate_block_hash()     # hash for the block
         self.transactionType = transactionType      # either "Upload", "Download", "Create_Account", or "Genesis"
         self.payload = payload                      # ** EITHER FILEDATA OR ACCOUNT OBJECT
-        
-        # update this depending on how sign-in/authorization works:
-        self.approved_IDs = []
 
     # calculateHash is a simple SHA256 hashing function
     def calculate_hash(self, s):
@@ -121,6 +118,10 @@ hasInputtedIP = False
 
 accountNames = []
 
+accounts = []
+patientNames = []
+allFiles = []
+
 def calculateHash(s):  # Added this function
     h = hashlib.sha256()
     h.update(s.encode('utf-8'))
@@ -162,6 +163,9 @@ def onClosing():
             logout(root)
         stopThreads = True
         root.destroy()
+
+def getStopThreads():
+    return stopThreads
 
 def getDimensions(root):
     root.update_idletasks()
@@ -246,7 +250,11 @@ def createAdminMenu(root):
 
     # create account button
     createAccountButton = Button(adminPage, fg='white', bg=buttonColor, text="Create Account", name="createAccountButton")
-    createAccountButton.place(anchor="c", relx=.5, rely=.45)
+    createAccountButton.place(anchor="c", relx=.5, rely=.375)
+
+    # change role button
+    changeRoleButton = Button(adminPage, fg='white', bg=buttonColor, text="Change Account Roles", name="changeRoleButton", command=lambda: switchToRoleChange())
+    changeRoleButton.place(anchor="c", relx=.5, rely=.45)
 
     # view blockchain button
     viewBlockchainButton = Button(adminPage, fg='white', bg=buttonColor, text="View Blockchain", name="viewBlockchainButton")
@@ -280,7 +288,7 @@ def createGenericMenu(root):
     nameLabel.place(anchor="c", relx=.5, rely=.15)
 
     # create upload button
-    uploadButton = Button(genericMenu, fg='white', bg=buttonColor, text="Upload File", name="uploadButton", command=lambda: uploadIPFS(root))
+    uploadButton = Button(genericMenu, fg='white', bg=buttonColor, text="Upload File", name="uploadButton", command=lambda: handleUploadButton(root))
     uploadButton.place(anchor="c", relx=.5, rely=.4)
 
     # create download button
@@ -352,6 +360,41 @@ def createCreateAccountMenu(root):
     createAccountMenu.place(anchor="c", relx=.5, rely=.5, width=w, height=h)
     return createAccountMenu
 
+def createRoleMenu(root):
+    roleMenu = Frame(root, bg=creamColor, name='roleMenu')
+    w, h = getDimensions(root)
+
+    # main label at top center
+    roleLabel = Label(roleMenu, bg=creamColor, text="Change Account Roles", font=font.Font(size=20))
+    roleLabel.place(anchor="c", relx=.5, rely=.05)
+
+    # account name label & dropdown
+    accountNameLabel = Label(roleMenu, text="Account to Change:", font=('Arial', 12))
+    accountNameLabel.place(anchor="c", rely=.35, relx=.325)
+    accountCombobox = ttk.Combobox(roleMenu, name="accountCombobox", state="readonly", values=accountNames, font=('Arial', 12))
+    accountCombobox.place(anchor="c", rely=.35, relx=.55)
+
+    # role label & dropdown
+    roleLabel = Label(roleMenu, text="New Role:", font=('Arial', 12))
+    roleLabel.place(anchor="c", rely=.45, relx=.35)
+    roleCombobox = ttk.Combobox(roleMenu, name="roleCombobox", state="readonly", values=["Admin", "Doctor", "Patient"], font=('Arial', 12))
+    roleCombobox.place(anchor="c", rely=.45, relx=.55)
+
+    # change role button
+    changeRoleButton = Button(roleMenu, fg='white', bg=buttonColor, text="Change Role", name="changeRoleButton", command=lambda: handleChangeRoleButton(accountCombobox.get(), roleCombobox.get(), root))
+    changeRoleButton.place(anchor="c", relx=.5, rely=.6)
+
+    # change role status label
+    statusLabel = Label(roleMenu, name="statusLabel", text="", fg='green', bg=creamColor, font=('Arial', 12))
+    statusLabel.place(anchor='c', relx=.5, rely=.675)
+
+    # back button
+    backButton = Button(roleMenu, fg='white', bg=buttonColor, name="backButton", text="Back", command=lambda: switchScenes(root.children["roleMenu"], root.children["adminMenu"]))
+    backButton.place(anchor="c", relx=.5, rely=.8)
+
+    roleMenu.place(anchor="c", relx=.5, rely=.5, width=w, height=h)
+    return roleMenu
+
 def createDownloadMenu(root):
     downloadMenu = Frame(root, bg=creamColor, name='downloadMenu')
     w, h = getDimensions(root)
@@ -371,7 +414,7 @@ def createDownloadMenu(root):
     statusLabel.place(anchor='c', relx=.5, rely=.525)
 
     # download button
-    downloadButton = Button(downloadMenu, fg='white', bg=buttonColor, name="downloadButton", text="Download File", command=lambda: downloadIPFS(fileCombobox.current(), root))
+    downloadButton = Button(downloadMenu, fg='white', bg=buttonColor, name="downloadButton", text="Download File", command=lambda: downloadIPFS(fileCombobox.get(), root))
     downloadButton.place(anchor="c", relx=.6, rely=.8)
 
     # back button
@@ -380,6 +423,35 @@ def createDownloadMenu(root):
 
     downloadMenu.place(anchor="c", relx=.5, rely=.5, width=w, height=h)
     return downloadMenu    
+
+def createDoctorUploadMenu(root):
+    doctorUploadMenu = Frame(root, bg=creamColor, name='doctorUploadMenu')
+    w, h = getDimensions(root)
+
+    # main label at top center
+    doctorUploadLabel = Label(doctorUploadMenu, bg=creamColor, text="Upload File", font=font.Font(size=20))
+    doctorUploadLabel.place(anchor="c", relx=.5, rely=.05)
+
+    # access patient name label & dropdown
+    patientNameLabel = Label(doctorUploadMenu, text="Desired Patient:", font=('Arial', 12))
+    patientNameLabel.place(anchor="c", rely=.45, relx=.35)
+    patientCombobox = ttk.Combobox(doctorUploadMenu, name="patientCombobox", state="readonly", values=patientNames, font=('Arial', 12))
+    patientCombobox.place(anchor="c", rely=.45, relx=.55)
+
+    # upload status label
+    statusLabel = Label(doctorUploadMenu, name="statusLabel", text="", fg='green', bg=creamColor, font=('Arial', 12))
+    statusLabel.place(anchor='c', relx=.5, rely=.525)
+
+    # upload button
+    uploadButton = Button(doctorUploadMenu, fg='white', bg=buttonColor, name="doctorUploadButton", text="Upload File", command=lambda: uploadIPFS(patientCombobox.get(), root))
+    uploadButton.place(anchor="c", relx=.6, rely=.8)
+
+    # back button
+    backButton = Button(doctorUploadMenu, fg='white', bg=buttonColor, name="backButton", text="Back", command=lambda: switchScenes(root.children["doctorUploadMenu"], root.children["genericMenu"]))
+    backButton.place(anchor="c", relx=.4, rely=.8)
+
+    doctorUploadMenu.place(anchor="c", relx=.5, rely=.5, width=w, height=h)
+    return doctorUploadMenu
 
 def createBlockchainMenu(root):
     blockchainScene = Frame(root, bg=creamColor, name='blockchainScene')
@@ -415,13 +487,39 @@ def updateName(root):
     root.children["genericMenu"].children["nameLabel"].configure(text=f"Welcome, {validator.fullLegalName}")
     root.children["adminMenu"].children["nameLabel"].configure(text=f"Welcome, {validator.fullLegalName}")
 
+def handleUploadButton(root):
+    global patientNames
+
+    if GUIAccount.role == "d":
+        patientNames = []
+        getAccounts()
+
+        for account in accounts:
+            if account.role == "p":
+                patientNames.append(account.username)
+        root.children["doctorUploadMenu"].children["patientCombobox"].configure(values=patientNames)
+        switchScenes(root.children["genericMenu"], root.children["doctorUploadMenu"])
+    else:
+        uploadIPFS(GUIAccount.username, root)
+
 def handleDownloadButton(root):
     getFileList()
-    root.children["downloadMenu"].children["fileCombobox"].configure(values=fileNames)
+    comboboxNames = []
+
+    if GUIAccount.role == "p":
+        for file in allFiles:
+            if file.accessList == GUIAccount.username:
+                comboboxNames.append(file.fileName)
+                print(f"Appended {file.fileName}")
+            else:
+                print(f"{file.accessList} is not equal to {GUIAccount.username}")
+        root.children["downloadMenu"].children["fileCombobox"].configure(values=comboboxNames)
+    else:
+        root.children["downloadMenu"].children["fileCombobox"].configure(values=fileNames)
     switchScenes(root.children["genericMenu"], root.children["downloadMenu"])
 
 def handleListAccountsButton(root):
-    getAccountNames()
+    getAccounts()
 
     labelText = "###########################\n\n"
     index = 1
@@ -436,15 +534,39 @@ def handleListAccountsButton(root):
     blockLabel = Label(popUp, text=labelText, font=('Arial', 12), name="accountLabel", justify=LEFT)
     blockLabel.pack(pady=20, side=TOP, anchor="w")
 
+def handleChangeRoleButton(chosenAccount, chosenRole, root):
+    if chosenAccount == GUIAccount.username:
+        root.children["roleMenu"].children["statusLabel"].configure(text=f"Cannot change your own role!", fg='red')
+        return
+    
+    if chosenRole == "Admin":
+        shortRole = "a"
+    elif chosenRole == "Doctor":
+        shortRole = "d"
+    else:
+        shortRole = "p"
+
+    for account in accounts:
+        if account.username == chosenAccount:
+            account.role = shortRole
+            changedAccount = account
+
+    root.children["roleMenu"].children["statusLabel"].configure(text=f"{chosenAccount}'s role successfully changed to {chosenRole}!", fg='green')
+
+    addToCandidateBlocks("Update_User", changedAccount)
+
+
 def setScenes():
     # print("Creating scenes...")
     welcomeScene = createWelcomeScene(root)
     loginScene = createLoginScene(root)
     adminScene = createAdminMenu(root)
     createAccountScene = createCreateAccountMenu(root)
+    changeRoleScene = createRoleMenu(root)
     blockchainScene = createBlockchainMenu(root)
     genericScene = createGenericMenu(root)
     downloadMenu = createDownloadMenu(root)
+    doctorUploadMenu = createDoctorUploadMenu(root)
 
     #adminScene.children["logoutButton"].configure(command=lambda: logout(root))
     adminScene.children["createAccountButton"].configure(command=lambda: switchScenes(adminScene, createAccountScene))
@@ -484,6 +606,12 @@ def switchScenes(prevScene, nextScene):
     hideScene(prevScene)
     showScene(nextScene)
 
+def switchToRoleChange():
+    getAccounts()
+
+    root.children["roleMenu"].children["accountCombobox"].configure(values=accountNames)
+    switchScenes(root.children["adminMenu"], root.children["roleMenu"])
+
 # generate_genesis_block creates the genesis block
 def generateGenesisBlock():
     t = str(datetime.now())
@@ -500,7 +628,7 @@ def generateSampleBlocks():
     t = str(datetime.now())
     address = ""
     address = calculateHash(t)
-    accessList = []
+    accessList = "doctor"
     blockchain.append(generateBlock(blockchain[-1], address, "Upload", FileData("QmRB39JYBwEqfpDJ5czsBpxrBtwXswTB4HUiiyvhS1b7ii", "chest_xray.png", "Genesis", accessList)))
     blockchain.append(generateBlock(blockchain[-1], address, "Upload", FileData("QmeUp1ciEQnKo9uXLi1SH3V6Z6YQHtMHRgMbzNLaHt6gJH", "Patient Info.txt", "Genesis", accessList)))
     blockchain.append(generateBlock(blockchain[-1], address, "Upload", FileData("QmeuNtvAJT8HMPgzEyuHCnWiMQkpwHBtAEHmzH854TqJXW", "RADRPT 08-13-2023.pdf", "Genesis", accessList)))
@@ -532,34 +660,35 @@ def login(username, password, root):
     global isLoggedIn
     global GUIAccount
     # print(f"Username: {username}, Password: {password}")
-    account = Account("false", "false", "a", "False")
+    accountRet = Account("false", "false", "a", "False")
     validLogin = False
-    for block in blockchain:
-        if block.transactionType == "Create_Account":
-            if block.payload.username == username:
-                if block.payload.password == password:
-                    validLogin = True
-                    account = block.payload
+
+    getAccounts()
+    for account in accounts:
+        if account.username == username:
+            if account.password == password:
+                validLogin = True
+                accountRet = account
     if validLogin == False:
         # print("Bad login.\n")
         root.children["loginScene"].children["statusLabel"].configure(text="Incorrect login.")
-        return validLogin, account
+        return validLogin, accountRet
     
-    if account.role == "a":
+    if accountRet.role == "a":
         # print("Successful login for admin.\n")
         switchScenes(root.children["loginScene"], root.children["adminMenu"])
-    elif account.role == "d":
+    elif accountRet.role == "d":
         # print("Successful login for doctor.\n")
         switchScenes(root.children["loginScene"], root.children["genericMenu"])
     else:
         # print("Successful login for patient.\n")
         switchScenes(root.children["loginScene"], root.children["genericMenu"])
 
-    GUIAccount = account
+    GUIAccount = accountRet
 
     isLoggedIn = True
 
-    return validLogin, account
+    return validLogin, accountRet
 
 def logout(root):
     global validator
@@ -581,18 +710,32 @@ def logout(root):
     isLoggedIn = False
 
 def createAccount(username, password, name, roleSelection, root):
-    # print("role is " + roleSelection)
     if roleSelection == "Admin":
         role = "a"
     elif roleSelection == "Doctor":
         role = "d"
     else:
         role = "p"
+
+    # pattern = r'^[^\s]{1,20}$'
+    # verifyUserIn = username
+    # verifyPassIn = password
+
+    # # remove spacews from name??
+
+    # if !re.match(pattern, text):
+    #     print("Valid input")
+
+    getAccounts()
+    if username in accountNames:
+        root.children["createAccountMenu"].children["statusLabel"].configure(text=f"{newAccount.fullLegalName}'s account NOT created!, Invalid Username", fg = 'red')   
+        return 
+    
     newAccount = Account(username, password, role, name)
     addToCandidateBlocks("Create_Account", newAccount)
     # print(f"Created account for: {newAccount.fullLegalName}")
 
-    root.children["createAccountMenu"].children["statusLabel"].configure(text=f"{newAccount.fullLegalName}'s account successfully created!")
+    root.children["createAccountMenu"].children["statusLabel"].configure(text=f"{newAccount.fullLegalName}'s account successfully created!", fg = 'green')
 
     return newAccount
 
@@ -616,7 +759,7 @@ def spawnBlock(root, blockIndex):
         labelText = (f"Index: {currentBlock.index}\n"
                      f"Timestamp: {currentBlock.timestamp}\n"
                      f"Type: {currentBlock.transactionType}")
-    elif currentBlock.transactionType != "Create_Account":
+    elif currentBlock.transactionType == "Upload" or currentBlock.transactionType == "Download":
         labelText = (f"Index: {currentBlock.index}\n"
                      f"Timestamp: {currentBlock.timestamp}\n"
                      f"Type: {currentBlock.transactionType}\n"
@@ -642,7 +785,7 @@ def spawnBlock(root, blockIndex):
     blockLabel = Label(popUp, text=labelText, font=('Arial', 12), name="blockLabel", justify=LEFT)
     blockLabel.pack(pady=20, side=TOP, anchor="w")
 
-def uploadIPFS(root):
+def uploadIPFS(accessName, root):
     # open dialog box to choose file
     root.filename = filedialog.askopenfilename(title="Select A File", filetypes=(("All Files", "*.*"), ("PNGs", "*.png"), ("Text Files", "*.txt"), ("PDFs", "*.pdf")))
     
@@ -666,9 +809,14 @@ def uploadIPFS(root):
     fileName = fileName.split('/')[-1]
     
     # if file name is already stored on blockchain:
-    if fileName in fileNames:
-        root.children["genericMenu"].children["statusLabel"].configure(text=f"A file named {fileName} already exists!", fg="red")
-        return
+    if GUIAccount.role == "p":
+        if fileName in fileNames:
+            root.children["genericMenu"].children["statusLabel"].configure(text=f"A file named {fileName} already exists!", fg="red")
+            return
+    else:
+        if fileName in fileNames:
+            root.children["doctorUploadMenu"].children["statusLabel"].configure(text=f"A file named {fileName} already exists!", fg="red")
+            return
     
     # put file on ipfs
     ipfsUrl = evm_api.ipfs.upload_folder(api_key=apiKey, body=ipfsBody)[0]["path"]
@@ -681,20 +829,29 @@ def uploadIPFS(root):
     #Deletes the temorary upload file
     #os.remove(encryptedFileLocation)
 
-    accessList = []
+    accessList = accessName
+    print(f"**** uploadIPFS(): accessList is {accessList}")
     newFileData = FileData(hash, fileName, validator.address, accessList)
     addToCandidateBlocks("Upload", newFileData)
     # print(f"Uploaded {newFileData.fileName} to IPFS.")
-    root.children["genericMenu"].children["statusLabel"].configure(text=f"{fileName} added successfully.", fg="green")
+    if GUIAccount.role == "p":
+        root.children["genericMenu"].children["statusLabel"].configure(text=f"{fileName} added successfully.", fg="green")
+    else:
+        root.children["doctorUploadMenu"].children["statusLabel"].configure(text=f"{fileName} added successfully.", fg="green")
 
     return newFileData
 
-def downloadIPFS(fileIndex, root):#def retrieveIpfs(conn, symmetricKey):
-    hash = ipfsHashes[fileIndex]
-    url = "https://ipfs.moralis.io:2053/ipfs/" + hash + "/uploaded_file"	#does the url to retrieve the file from IPFS
+def downloadIPFS(fileName, root):#def retrieveIpfs(conn, symmetricKey):
+    # hash = ipfsHashes[fileIndex]
+    for file in allFiles:
+        if fileName == file.fileName:
+            chosenFile = file
+            print(f"File name is: {fileName}")
+
+    url = "https://ipfs.moralis.io:2053/ipfs/" + chosenFile.ipfsHash + "/uploaded_file"	#does the url to retrieve the file from IPFS
     r = requests.get(url, allow_redirects=True)
     fileType = r.headers.get("content-type").split("/")[1]
-    fileName = fileNames[fileIndex]
+    # fileName = fileNames[fileIndex]
     with open(fileName, "wb") as f:
         f.write(r.content)	#opens the file and adds content
 
@@ -703,8 +860,8 @@ def downloadIPFS(fileIndex, root):#def retrieveIpfs(conn, symmetricKey):
     #Ten opens the second file, clears it, writes all decrypted data to it, then closes the file
     #SE.decryptFile(symmetricKey, file_name, file_name)
 
-    accessList = []
-    newFileData = FileData(hash, fileName, validator.address, accessList)
+    accessList = chosenFile.accessList
+    newFileData = FileData(chosenFile.ipfsHash, fileName, validator.address, accessList)
     addToCandidateBlocks("Download", newFileData)
     # print(f"Downloaded {newFileData.fileName} from IPFS.")
 
@@ -715,9 +872,11 @@ def downloadIPFS(fileIndex, root):#def retrieveIpfs(conn, symmetricKey):
 def getFileList():
     global ipfsHashes
     global fileNames
+    global allFiles
 
     ipfsHashes = []
     fileNames = []
+    allFiles = []
 
     for block in blockchain:
         if block.index == 0:
@@ -725,17 +884,28 @@ def getFileList():
         if block.transactionType == "Upload":
             ipfsHashes.append(block.payload.ipfsHash)
             fileNames.append(block.payload.fileName)
+            allFiles.append(block.payload)
     
     return ipfsHashes, fileNames
 
-def getAccountNames():
+def getAccounts():
     global accountNames
+    global accounts
 
     accountNames = []
+    accounts = []
 
-    for block in blockchain:
-        if block.transactionType == "Create_Account":
+    for block in reversed(blockchain):
+        if (block.transactionType == "Update_User") and (block.payload.username not in accountNames):
             accountNames.append(block.payload.username)
+            accounts.append(block.payload)
+        elif (block.transactionType == "Create_Account") and (block.payload.username not in accountNames):
+            accountNames.append(block.payload.username)
+            accounts.append(block.payload)
+    
+    print("\n**** GetAccounts() results:")
+    for account in accounts:
+        print(f"\t{account.username} \t {account.role}")
 
 def addToCandidateBlocks(transactionType, payload):
     oldLastIndex = blockchain[-1]
