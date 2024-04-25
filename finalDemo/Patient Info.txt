@@ -1,0 +1,14 @@
+Name: John Doe
+Age: 21
+Gender: Male
+Weight: 220lbs
+Height: 5'11
+Date of Birth: 8-14-2002
+Insurance: BlueCross/BlueShield
+Insurance_Type: Federal
+InsurancePolicyNumber: 123-abc-890-xyz
+Allergies: Peanuts,Glueten,Eggs,Plastic,Latex,Milk,Fish,Shellfish,Cats,Soy,Penicillin,Cardboard,[Everything]
+Symptons: Wheezing,
+Affliction: Unknown[Under_Consultation]
+Attend: Dr. Whoami Myself
+Primary_Care_Physician: Dr. Bill Nobody
