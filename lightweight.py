@@ -31,9 +31,9 @@ samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 self_samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 neighbor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 initial_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-connectport = 11436
-givenport = 12436
-lightweightport = 13442
+connectport = 11453
+givenport = 12453
+lightweightport = 13453
 
 #import netifaces as ni
 
@@ -122,7 +122,7 @@ accountNames = []
 # i'm leaving it in
 announcements = []
 
-targetIP = "146.229.163.145"
+#targetIP = "146.229.163.145"
 loggedIn = False
 loggedInLock = threading.Lock()
 validatorLock = threading.Lock()
@@ -188,9 +188,9 @@ def login(username, password, localBlockchain):
     return False
 
 
-def uploadIpfs(author, fileName, localBlockchain, fileContent, FILENAME):#, symmetricKey):
+def uploadIpfs(author, fileName, localBlockchain, fileContent, FILENAME, targetIP, accessList):#, symmetricKey):
     try:
-    
+        usersToGiveAccessTo = accessList.split('/')
         #The following code may be needed in the upload function
 
         #Might need to save a copy of the uploaded file to the UploadedFile lists
@@ -229,24 +229,26 @@ def uploadIpfs(author, fileName, localBlockchain, fileContent, FILENAME):#, symm
         
         #Probably don't need these
         hash = parsedPath[4]            # cleans up the hash and the file name
-        ipfsHashes.append(hash)        # update the hash and file lists
-        fileNames.append(fileName)
+        #ipfsHashes.append(hash)        # update the hash and file lists
+        #fileNames.append(fileName)
 
         #Deletes the temorary upload file
         #os.remove(encryptedFileLocation)
 
         #Creates a new data structure to contain the hash
-        accessList = []
-        newFileData = FileData(hash, fileName, author, accessList)
+        #accessList = []
+        #usersToGiveAccessTo=["mike", 'john', 'steve']
+        newFileData = FileData(hash, fileName, author, usersToGiveAccessTo)
         #Need to send these pieces of data
         #addToCandidateBlocks("Upload", newFileData)
 
         #-1 for full node determine, and "" for the full node to put in the validator address
         #newBlock = generateBlock(-1, author, "Download", newFileData)
-        sendRequest("Upload_File", newFileData, author)
-
+        return sendRequest("Upload_File", newFileData, targetIP, author)
     except:
-        return None
+        return "Error"
+    #except Exception as error:
+    #    return error.with_traceback
 
 
 # generate_block creates a new block using the previous block's hash
@@ -267,7 +269,7 @@ def isBlockValid(newBlock, oldBlock):
 
     return True
 
-def retrieveIpfs(localBlockchain, fileName, ifpsHash, username):#def retrieveIpfs(conn, symmetricKey):
+def retrieveIpfs(localBlockchain, fileName, ifpsHash, username, targetIP):#def retrieveIpfs(conn, symmetricKey):
     url = "https://ipfs.moralis.io:2053/ipfs/" + ifpsHash + "/uploaded_file"	#does the url to retrieve the file from IPFS
     r = requests.get(url, allow_redirects=True)
 
@@ -286,7 +288,7 @@ def retrieveIpfs(localBlockchain, fileName, ifpsHash, username):#def retrieveIpf
                                     #-1 for full node determine, and "" for the full node to put in the validator address
                                     #newBlock = generateBlock(-1, "", "Download", newFileData)
     #Sends a download block creation request showing that the username tried to download the file
-    sendRequest("Download_File", newFileData, username)
+    sendRequest("Download_File", newFileData, targetIP, username)
     #If this needs a block created for adding, add it
 
     #T here, Use symmetric key to decrypt the file, r.content
@@ -298,9 +300,9 @@ def retrieveIpfs(localBlockchain, fileName, ifpsHash, username):#def retrieveIpf
 
 
 #Function to refresh the blockchain by asking the given node 
-def refreshBlockchain():
+def refreshBlockchain(targetIP):
     #Calls the function to connect to the desired IP and get the most recent blockchain
-    return sendRequest("Get_Blockchain", None)
+    return sendRequest("Get_Blockchain", None, targetIP, None)
 
 #Function to loop through the given blockchain and pull out the file names
 def getFileList(localBlockchain):
@@ -361,16 +363,16 @@ def createAccount(username, password, name, roleSelection):
     return newAccount
 
 #Function to create a new account
-def createNewAccount(username, password, role, LegalName, localBlockchain):
+def createNewAccount(username, password, role, LegalName, localBlockchain, targetIP, authorizingUser):
     #Loops through the blockchain and if an account has the same username, returns False
     for block in localBlockchain:
         if block.transactionType == "Create_Account" and block.payload.username == username:
-            return False
+            return "False"
     
     #Theoretically, the best check is to get the next blockchain and check the blocks for the addition of a new user
     #Need to create a function to generate a block and send that block as a request
     #Else, the same username does not exist, so create the block and send a request for it to be added
-    return sendRequest("Create_User", generate_block(blockchain[-1], "", "Create_Account", createAccount(username, password, LegalName, role)))
+    return sendRequest("Create_User", createAccount(username, password, LegalName, role), targetIP, authorizingUser)
 
 #Function to convert the blockchain's text into a string
 def getTextBlockchain(localBlockchain):
@@ -525,39 +527,49 @@ def convertString(currentBlockchain):
         i += 1
     return localBlockchain
 
+
 #The function needs 3, maybe 4, operations based on what blocks are generated
 #Create Account
 #Upload File
 #DownloadFile
 #Get most recent blockchain
 
+#sendRequest("Upload_File", newFileData, targetIP, author)
+
 #Function to send the request to the target IP
-def sendRequest(sendRequestMessage, blockToAdd, authorizingUser=None):
+def sendRequest(sendRequestMessage, blockToAdd, targetIP="146.229.163.145", authorizingUser=None):
     try:
         #Creates a socket
         clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        clientSocket.settimeout(5)
         #Connects to the other device
         clientSocket.connect((targetIP, lightweightport))
         #Based on the request, craft a message and send it
         if sendRequestMessage == "Upload_File":
             #Sends the messages to the connected full node
             clientSocket.send((sendRequestMessage).encode("utf-8")[:4096])
-            clientSocket.send((blockToAdd.hash).encode("utf-8")[:4096])
+            clientSocket.send((" ").encode("utf-8")[:4096])
+            clientSocket.send((blockToAdd.ipfsHash).encode("utf-8")[:4096])
+            clientSocket.send((" ").encode("utf-8")[:4096])
             clientSocket.send((blockToAdd.fileName).encode("utf-8")[:4096])
-            clientSocket.send((blockToAdd.author).encode("utf-8")[:4096])
-            clientSocket.send((blockToAdd.accessList).encode("utf-8")[:4096])
+            clientSocket.send((" ").encode("utf-8")[:4096])
+            clientSocket.send((blockToAdd.authorName).encode("utf-8")[:4096])
+            for item in blockToAdd.accessList:
+                clientSocket.send((" ").encode("utf-8")[:4096])
+                clientSocket.send((str(item)).encode("utf-8")[:4096])
             #Closes the socket
             clientSocket.close()
             #If this line is reached(no error have resulted), returns the status of the operation as true
-            return "True"
+            return blockToAdd.ipfsHash
         elif sendRequestMessage == "Download_File":
             #Sends the messages to the connected full node
             clientSocket.send((sendRequestMessage).encode("utf-8")[:4096])
+            clientSocket.send((" ").encode("utf-8")[:4096])
             clientSocket.send((authorizingUser).encode("utf-8")[:4096])
-            clientSocket.send((blockToAdd.hash).encode("utf-8")[:4096])
+            clientSocket.send((" ").encode("utf-8")[:4096])
+            clientSocket.send((blockToAdd.ipfsHash).encode("utf-8")[:4096])
+            clientSocket.send((" ").encode("utf-8")[:4096])
             clientSocket.send((blockToAdd.fileName).encode("utf-8")[:4096])
-            clientSocket.send((blockToAdd.author).encode("utf-8")[:4096])
-            clientSocket.send((blockToAdd.accessList).encode("utf-8")[:4096])
             #Closes the socket
             clientSocket.close()
             #If this line is reached(no error have resulted), returns the status of the operation as true
@@ -565,10 +577,15 @@ def sendRequest(sendRequestMessage, blockToAdd, authorizingUser=None):
         elif sendRequestMessage == "Create_User":
             #Sends the messages to the connected full node
             clientSocket.send((sendRequestMessage).encode("utf-8")[:4096])
+            clientSocket.send((" ").encode("utf-8")[:4096])
             clientSocket.send((authorizingUser).encode("utf-8")[:4096])
+            clientSocket.send((" ").encode("utf-8")[:4096])
             clientSocket.send((blockToAdd.username).encode("utf-8")[:4096])
+            clientSocket.send((" ").encode("utf-8")[:4096])
             clientSocket.send((blockToAdd.password).encode("utf-8")[:4096])
+            clientSocket.send((" ").encode("utf-8")[:4096])
             clientSocket.send((blockToAdd.role).encode("utf-8")[:4096])
+            clientSocket.send((" ").encode("utf-8")[:4096])
             clientSocket.send((blockToAdd.fullLegalName).encode("utf-8")[:4096])
             #Closes the socket
             clientSocket.close()
@@ -593,13 +610,15 @@ def sendRequest(sendRequestMessage, blockToAdd, authorizingUser=None):
             return "False"
         
     #Except if something has gone wrong, return false as the operation failed
+    except socket.timeout:
+        return "DeviceNotOnline"#Except if something has gone wrong, return false as the operation failed
     except:
-        return "DeviceNotOnline"
+        return "Something went wrong"
 
 
-def main():
+def main(targetIP):
     #Calls the function to connect to the desired IP and get the most recent blockchain
-    return sendRequest("Get_Blockchain", None)
+    return sendRequest("Get_Blockchain", None, targetIP, None)
     """
     # Create genesis block and admin account block
     genesis_block = generate_genesis_block()
@@ -612,7 +631,7 @@ def main():
     """
 
 if __name__ == "__main__":
-    main()
+    main(targetIP="146.229.163.145")
 
 
 
