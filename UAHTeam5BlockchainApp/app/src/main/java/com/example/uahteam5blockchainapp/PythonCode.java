@@ -1,22 +1,11 @@
 package com.example.uahteam5blockchainapp;
 
 import android.content.Context;
-import android.net.Uri;
-import android.os.Environment;
 import android.util.Log;
-import android.widget.Toast;
-
-import androidx.navigation.fragment.NavHostFragment;
-
 import com.chaquo.python.PyObject;
 import com.chaquo.python.Python;
 import com.chaquo.python.android.AndroidPlatform;
-
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,12 +14,17 @@ public class PythonCode
 {
     //String variable to hold the current user
     private String currentUser;
+
+    //Private boolean variable to hold if the user is logged in or not
+    private boolean isLoggedIn;
+
     //Declares a singleton variable for the class
     private static PythonCode currentInstance = null;
 
     //Private python variable to run the code
     private PyObject pythonModule;
     private PyObject blockchain;
+    private String targetIP;
 
     //Private constructor for the class
     private PythonCode(Context context)
@@ -62,31 +56,33 @@ public class PythonCode
     //Function to login with the given credentials
     public boolean login(String userName, String password)
     {
+        //If the blockchain is null, return false to show that the user has not and cannot login
+        if (blockchain == null)
+        {
+            return false;
+        }
+        //Log.e("Result", blockchain.toJava(String.class));
         currentUser = userName;
         //Calls the login() function in Python and sends it the login arguments and returns the result
         PyObject result = pythonModule.callAttr("login", userName, password, blockchain);
-        //Converts the PyObject to a Java boolean instance and returns it to the calling function
+        //Converts the PyObject to a Java boolean instance and examines it for successfulness in logging in
         return result.toJava(boolean.class);
     }
 
     //Function to upload the given file
-    public boolean uploadFile(byte[] fileContentToUpload, String filePath, String fileName)
+    public String uploadFile(byte[] fileContentToUpload, String filePath, String fileName, String array)
     {
-        //Before uploading, refresh the blockchain
-        refreshBlockchain();
         //Calls the uploadIpfs() function in Python and sends it the login arguments and returns the result
-        pythonModule.callAttr("uploadIpfs", currentUser, fileName, blockchain, fileContentToUpload, fileName);
-        //Log.e("status", blockchain.toString());
-        //After uploading, refresh the blockchain
-        refreshBlockchain();
-        return true;
+        String result = pythonModule.callAttr("uploadIpfs", currentUser, fileName, blockchain, fileContentToUpload, fileName, targetIP, array).toJava(String.class);
+        Log.e("result", result);
+        return result;
     }
 
     //Function to download the requested file from the blockchain
-    public boolean downloadFile(String fileHash, String filePath)
+    public boolean downloadFile(String fileHash, String filePath, String fileName)
     {
-        //Calls the login() function in Python and sends it the login arguments and returns the result
-        PyObject result = pythonModule.callAttr("retrieveIpfs", blockchain, fileHash);
+        //Calls the retrieveIpfs() function in Python downloads the file
+        PyObject result = pythonModule.callAttr("retrieveIpfs", blockchain, fileName, fileHash, currentUser, targetIP);
         byte[] resultingData = result.toJava(byte[].class);
         //Tries to write the data to an output file in the download file directory
         try
@@ -111,12 +107,9 @@ public class PythonCode
     //Function to start the local blockchain
     public void start()
     {
-        //Calls the login() function in Python and sends it the login arguments and returns the result
-        blockchain = pythonModule.callAttr("main");
+        //Calls the main() function in Python to get the most recent blockchain
+        //blockchain = pythonModule.callAttr("main", targetIP);
     }
-
-
-    //Note for getting the file list, does not check for duplicate file names
 
     //Function to download the list of available files
     public ArrayList<String> listFiles()
@@ -158,7 +151,12 @@ public class PythonCode
     public void refreshBlockchain()
     {
         //Calls the refreshBlockchain() function in Python and saves the returned blockchain
-        blockchain = pythonModule.callAttr("refreshBlockchain");
+        blockchain = pythonModule.callAttr("refreshBlockchain", targetIP);
+        //Ensures the app will not crash with empty blockchain data
+        if (blockchain.equals("DeviceNotOnline"))
+        {
+            blockchain = null;
+        }
     }
 
     //Function to create a new user account
@@ -166,7 +164,14 @@ public class PythonCode
     public boolean createUser(String Fullname, String Username, String Password, String role)
     {
         //Calls the createAccount() function in Python and returns the status of the account creation
-        return (pythonModule.callAttr("createNewAccount", Username, Password, role, Fullname, blockchain)).toJava(boolean.class);
+        PyObject result = pythonModule.callAttr("createNewAccount", Username, Password, role, Fullname, blockchain, targetIP, currentUser);
+        //If the result was a string, return true for success
+        if (result.toJava(String.class).equals("True"))
+        {
+            return true;
+        }
+        //Else, return false to show the account was NOT created
+        return false;
     }
 
     //Function to get the user's role from the blockchain
@@ -182,8 +187,15 @@ public class PythonCode
     //Requires more work
     public ArrayList<String> getListActiveUsers()
     {
+
+
+
         //Refreshes the blockchain
-        refreshBlockchain();
+        //refreshBlockchain();
+
+
+
+
         //Calls the getListActiveUsers() function in Python and sends it the blockchain and returns the result
         PyObject result = pythonModule.callAttr("getListActiveUsers", blockchain);
         //Creates a new ArrayList to contain the result
@@ -204,18 +216,44 @@ public class PythonCode
     //Function to get the blockchain as viewable text
     public String getCurrentBlockchain()
     {
+
+
         //Refreshes the blockchain
-        refreshBlockchain();
+        //refreshBlockchain();
+
+
         //Calls the python code to get the string version of the blockchain
         //Calls the getTextBlockchain() function in Python and returns the resulting String
         PyObject result = pythonModule.callAttr("getTextBlockchain", blockchain);
         //Converts the PyObject to a Java String instance and returns it to the calling function
         return result.toJava(String.class);
     }
+
+    //Function to set the login status of the user
+    public void setLoggedIn(boolean loggedIn)
+    {
+        isLoggedIn = loggedIn;
+        //Calls the setLoggedInStatus() function in Python to log in or out the user
+        //pythonModule.callAttr("setLoggedInStatus", loggedIn);
+    }
+
+    //Function to set the target IP in the code
+    public void setTargetIP(String newIPAddress)
+    {
+        targetIP = newIPAddress;
+        //Calls the setLoggedInStatus() function in Python to log in or out the user
+        //pythonModule.callAttr("setTargetIP", newIPAddress);
+    }
+
+    //Function to get the login status of the user
+    public boolean isLoggedIn()
+    {
+        return isLoggedIn;
+    }
 }
 
 //old code
-        /*
+/*
         //Tries to open and read the content of the file
         try
         {
@@ -274,3 +312,42 @@ public class PythonCode
         }
         return true;        //Returns true to show that the operation was a success
         */
+/*
+private void refreshBlockchain():
+{
+
+        //if (blockchain != null && blockchain.getClass().getName().equals("java.lang.String"))
+        //{
+        //    Log.e("Result", blockchain.toJava(String.class));
+        //}
+        //assert blockchain != null;
+        //Log.e("Result", blockchain.toJava(String.class));
+        return;
+        /*
+        //Checks if the result was null
+        if (result == null)
+        {
+            Log.e("null blockchain", "nothing to the blockchain");
+            //Do nothing
+        }
+        //Else, the result is not null
+        else
+        {
+            Log.e("shdflkjshdflkjsdh", "nothing to the blockchain");
+            //Creates a new ArrayList to contain the result
+            ArrayList<String> listOfActiveUsers = new ArrayList<>();
+            //Converts the result from Python list to a list of Python
+            List<PyObject> listConversion = result.asList();
+            //Loops through all items in the list and returns them as a list
+            for (int i = 0; i < listConversion.size(); i++)
+            {
+                listOfActiveUsers.add(listConversion.get(i).toString());      //Adds the current element to the new list
+            }
+
+            Log.e("something to the blockchain", listOfActiveUsers.toString());
+            Log.e("something to the blockchain", listConversion.toString());
+            blockchain = result;
+        }
+
+}
+ */

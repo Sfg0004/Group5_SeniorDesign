@@ -115,8 +115,15 @@ public class CreateUserFragment extends Fragment
                             public void onClick(DialogInterface logoutDialog, int ID) {
                                 //Dismisses the dialog box
                                 logoutDialog.dismiss();
+                                //Updates the local blockchain first
+                                tempCaller.refreshBlockchain();
                                 //Creates a temp variable for the role of the user
                                 //Should not have an issue with role selection
+
+
+                                //Commented out to handle the python code
+                                //If this gets uncommented, replace "roleSpinner.getSelectedItem().toString()", with 'role'
+                                /*
                                 String role;
                                 //Switches to convert the role into a string
                                 switch (roleSpinner.getSelectedItem().toString()) {
@@ -130,9 +137,11 @@ public class CreateUserFragment extends Fragment
                                     default:
                                         role = "p";
                                         break;
-                                }
+                                }*/
+
+
                                 //Gets the information from the input boxes and makes the user account using the given information
-                                boolean accountCreatedOrNot = tempCaller.createUser(binding.editFullName.getText().toString(), binding.editUsername.getText().toString(), binding.editPassword.getText().toString(), role);        //Calls the Python code the download the file
+                                boolean accountCreatedOrNot = tempCaller.createUser(binding.editFullName.getText().toString(), binding.editUsername.getText().toString(), binding.editPassword.getText().toString(), roleSpinner.getSelectedItem().toString());        //Calls the Python code the download the file
                                 //Create a dialog box showing the status of account creation
                                 AlertDialog.Builder userCreated = new AlertDialog.Builder(requireContext());
                                 //Sets the button for the dialog box

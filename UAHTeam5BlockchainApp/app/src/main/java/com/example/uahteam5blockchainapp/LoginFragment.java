@@ -1,8 +1,6 @@
  package com.example.uahteam5blockchainapp;
 
-import android.Manifest;
 import android.content.DialogInterface;
-import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Environment;
 import android.text.InputType;
@@ -11,15 +9,10 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.EditText;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
 import android.view.animation.AlphaAnimation;
@@ -27,7 +20,6 @@ import android.view.animation.Animation;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.FileWriter;
-import java.util.Objects;
 import java.util.Scanner;
 import java.io.File;
 
@@ -43,6 +35,8 @@ import com.example.uahteam5blockchainapp.databinding.FragmentLoginBinding;
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
     {
         binding = FragmentLoginBinding.inflate(inflater, container, false);
+        tempCaller = PythonCode.PythonCode(getContext());
+        tempCaller.refreshBlockchain();
         return binding.getRoot();
     }
 
@@ -53,21 +47,23 @@ import com.example.uahteam5blockchainapp.databinding.FragmentLoginBinding;
         //Centers the username and password text boxes
         binding.editUsername.setGravity(Gravity.CENTER);
         //Calls the python code object
-        tempCaller = PythonCode.PythonCode(getContext());
         binding.editTextPassword.setGravity(Gravity.CENTER);
         //First, check if the file exists that contains the IP
-        File destinationIP = new File(getContext().getFilesDir().toString() + "/targetIP.txt");
+        File destinationIP = new File(requireContext().getFilesDir().toString() + "/targetIP.txt");
 
-
+        //tempCaller = PythonCode.PythonCode(getContext());
+        //tempCaller.refreshBlockchain();
         //Uncomment this to verify the IP is correct
-        //destinationIP.delete();
+        destinationIP.delete();
 
 
         //Gets the first line from the file
-        String firstLine = getFirstLineFromFile(getContext().getFilesDir().toString() + "/targetIP.txt");
+        Log.e("File directory", requireContext().getFilesDir().toString() + "/targetIP.txt");
+        //String firstLine = "146.229.163.144";
+        String fileFirstLine = getFirstLineFromFile(requireContext().getFilesDir().toString() + "/targetIP.txt");
         //Based on the checks from getFirstLineFromFile(), the file either exists, or there in bad data in the file/the file doesn't exist
         //If the tests failed
-        if (firstLine == null)
+        if (fileFirstLine == null)
         {
             //Tries to create a new file and write an IP to it
             try
@@ -210,6 +206,9 @@ import com.example.uahteam5blockchainapp.databinding.FragmentLoginBinding;
                 String username = binding.editUsername.getText().toString();
                 //Gets the password from the input box
                 String password = binding.editTextPassword.getText().toString();
+
+                //Refreshes the local blockchain
+                tempCaller.refreshBlockchain();
                 //Gets the result of the login
                 boolean status = tempCaller.login(username, password);
                 //Toast.makeText(getContext(), Boolean.toString(status), Toast.LENGTH_LONG).show();
@@ -222,6 +221,7 @@ import com.example.uahteam5blockchainapp.databinding.FragmentLoginBinding;
                 //If the login was successful
                 if (status == true)
                 {
+                    tempCaller.setLoggedIn(true);
                     //Clears the username and password text boxes
                     binding.editUsername.setText("");
                     //Clears the password text input box
@@ -316,6 +316,8 @@ import com.example.uahteam5blockchainapp.databinding.FragmentLoginBinding;
                 //If the IP is valid, dismiss the box and write the data to the data file
                 if (validateIP(inputText.getText().toString()))
                 {
+                    //Sets the target IP in the python code
+                    tempCaller.setTargetIP(inputText.getText().toString());
                     //Dismisses the logout dialog box
                     IPPromptDialog.dismiss();
                     try
@@ -373,40 +375,50 @@ import com.example.uahteam5blockchainapp.databinding.FragmentLoginBinding;
     }
 
     //Function to get the first line from the given file
-    private String getFirstLineFromFile(String filePath)
-    {
+    private String getFirstLineFromFile(String filePath) {
         //Creates a new file handler for the file
         File newFile = new File(filePath);
         //Ensures the file exists
-        if (newFile.exists())
-        {
+        if (newFile.exists()) {
             //Tries to read from the file
-            try
-            {
+            try {
                 //Opens the file and reads the first line
                 Scanner newScanner = new Scanner(newFile);
-                //Gets the first line of text
-                String resultingData = newScanner.nextLine();
-                //If the IP is validated
-                if (validateIP(resultingData))
+                //If there is a next line to the input file, read it
+                if (newScanner.hasNextLine())
                 {
-                    //Returns the correct IP
-                    return resultingData;
+                    //Gets the first line of text
+                    String resultingData = newScanner.nextLine();
+                    //If the IP is validated
+                    if (validateIP(resultingData)) {
+                        //Returns the correct IP
+                        return resultingData;
+                    }
+                    //Else, the IP is invalidated, so return null
+                    return null;
                 }
-                //Else, the IP is invalidated, so return null
-                return null;
+                //Else, no content to the file, so get valid data to store in there
+                else
+                {
+                    getValidIP();
+                }
             }
             //This should not happen as the file has ben confirmed to exist
-            catch (FileNotFoundException error)
-            {
+            catch (FileNotFoundException error) {
                 //Logs the error
                 Log.e("Manual termination", "Terminated for an impossible condition happening");
                 getActivity().finish();     //Terminates the app
             }
 
         }
-        //Else, file does not exist so terminate
-        return null;
+        else
+        {
+            Log.e("Manual termination1", "Terminated for an impossible condition happening");
+            //Else, file does not exist so terminate
+            return null;
+        }
+        Log.e("Manual termination2", "Terminated for an impossible condition happening");
+        return "False";
     }
 
     @Override

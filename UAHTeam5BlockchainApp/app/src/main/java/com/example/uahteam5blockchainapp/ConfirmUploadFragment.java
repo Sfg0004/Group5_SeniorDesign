@@ -1,44 +1,35 @@
 package com.example.uahteam5blockchainapp;
 
 import android.Manifest;
-import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.StreamCorruptedException;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
-
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.example.uahteam5blockchainapp.databinding.FragmentUploadConfirmBinding;
@@ -48,7 +39,6 @@ public class ConfirmUploadFragment extends Fragment
     private int DefaultColor = 0;       //Variable to hold the default color for the list of buttons
     Uri uploadResource;     //Resource that will be send onto the blockchain
     private FragmentUploadConfirmBinding binding;       //Binding to refer to the current fragment
-    private ProgressBar progressBar;      //Variable to show the file is being uploaded
     private PythonCode tempCaller;      //Python function caller code
     private ArrayList<String> usersToGiveAccess;        //ArrayList of users to give access to
 
@@ -106,7 +96,7 @@ public class ConfirmUploadFragment extends Fragment
                         binding.fileImportText.setVisibility(View.VISIBLE);        //Makes the view visible
                 }
             }
-            //Creates the PythonCode object to download files
+            //Creates the PythonCode object to upload files
             tempCaller = PythonCode.PythonCode(getContext());
             //Gets the list of active users
             ArrayList<String> activeUsers = tempCaller.getListActiveUsers();
@@ -203,6 +193,7 @@ public class ConfirmUploadFragment extends Fragment
                 //If the file is already on the blockchain
                 if (filesOnBlockchain.contains(newFile.getName()))
                 {
+                    //At this point, could append(1) to the file name and change its name for uploading
                     //Informs the user of the duplicate nature of the file
                     duplicateAlert();
                     uploadResource = null;
@@ -212,9 +203,6 @@ public class ConfirmUploadFragment extends Fragment
                 //Else, the file is not already uploaded to the blockchain
                 else
                 {
-                    //Tries to open and read the content of the file
-                    try
-                    {
                         byte[] uploadBytes = getUploadBytes();
                         //If the upload bytes is an issue, exit
                         if (uploadBytes == null)
@@ -225,22 +213,41 @@ public class ConfirmUploadFragment extends Fragment
                             //Now, proceed back to the First Fragment
                             NavHostFragment.findNavController(ConfirmUploadFragment.this).navigate(R.id.action_ConfirmUploadFragment_to_FirstFragment);
                         }
+                        StringBuilder basicString = new StringBuilder();
+                        for (int i = 0; i < usersToGiveAccess.size(); i++)
+                        {
+                            basicString.append(usersToGiveAccess.get(i));
+                            if (i != usersToGiveAccess.size()-1)
+                            {
+                                basicString.append('/');
+                            }
+                        }
+                        //String[] array = usersToGiveAccess.toArray(new String[0]);
+                        Log.e("Uploading File", "Uploading " + newFile.getName() + " from " + newFile.getPath());
                         //Calls the uploadIpfs() function in Python and sends it the login arguments and returns the result
-                        tempCaller.uploadFile(uploadBytes, uploadResource.getPath(), newFile.getName());
+                        String resultingHash = tempCaller.uploadFile(uploadBytes, uploadResource.getPath(), newFile.getName(), basicString.toString());
+                        Log.e("Uploading File", "Uploading " + newFile.getName() + " from " + newFile.getPath());
                         //After uploading, the blockchain is refreshed automatically
                         uploadResource = null;
+
+                        UploadFinishFragment newFragment = new UploadFinishFragment();        //Creates the next fragment variable
+                        Bundle newArguments = new Bundle();        //Creates a new bundle of arguments to send
+                        newArguments.putString("filehash", resultingHash);  //Adds the uri to the bundle///////////////takenImage.toString()(or.toPath)
+                        newFragment.setArguments(newArguments);        //Sends the arguments to the next fragment
                         //Now, proceed to the Upload finish Fragment
-                        NavHostFragment.findNavController(ConfirmUploadFragment.this).navigate(R.id.action_ConfirmUploadFragment_to_UploadFinishFragment);
-                    }
+                        NavHostFragment.findNavController(ConfirmUploadFragment.this).navigate(R.id.action_ConfirmUploadFragment_to_UploadFinishFragment, newArguments);
+
+                    /*
                     //Catches an input exception
                     catch (Exception error)
                     {
+                        Log.e("errorMessage", Arrays.toString(error.getStackTrace()));
                         //Should not happen. But, if it does, log it
                         Log.e("File Upload Error", "Cannot Upload'" + uploadResource.getPath() + "' to the blockchain");
                         uploadResource = null;
                         //Now, proceed back to the First Fragment
                         NavHostFragment.findNavController(ConfirmUploadFragment.this).navigate(R.id.action_ConfirmUploadFragment_to_FirstFragment);
-                    }
+                    }*/
                 }
             }
         });

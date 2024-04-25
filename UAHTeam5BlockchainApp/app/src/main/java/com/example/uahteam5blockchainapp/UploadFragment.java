@@ -5,7 +5,6 @@ import android.icu.text.SimpleDateFormat;
 import android.net.Uri;
 import android.os.Bundle;
 import android.database.Cursor;
-import android.os.Environment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -24,7 +23,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Calendar;  //Imports the calendar to get the date
-import java.util.Date;      //Gets the gate
+import java.util.Date;      //Gets the date
 import java.util.Locale;
 
 import com.example.uahteam5blockchainapp.databinding.FragmentUploadBinding;

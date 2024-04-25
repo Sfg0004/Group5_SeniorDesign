@@ -1,0 +1,1199 @@
+#To run server: python3 posTnet.py
+#To run client: nc <ip addr> <port#>
+
+from methods import comm
+from methods import GUI_modulated as GUI
+
+import hashlib
+import socket
+import signal
+import time
+import threading
+import os
+import sys
+import netifaces as ni
+from subprocess import Popen, PIPE, STDOUT
+import multiprocessing
+import re
+import errno
+from random import randint
+from datetime import datetime
+from queue import Queue
+from moralis import evm_api
+import requests
+import base64
+from queue import Queue
+
+# COMM.PY GLOBALS
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #new socket object
+client = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+self_samaritan = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+neighbor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+initial_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+connectport = 11436
+givenport = 12436
+
+#import netifaces as ni
+
+#T here, import these to use the encryption
+#import asymmetricEncryption as AE
+#import symmetricEncryption as SE
+#import rsa
+
+class Validator:
+    def __init__(self, balance, account): # account is an Account object!
+        self.address = account.username
+        self.balance = balance
+        self.role = account.role
+        self.fullLegalName = account.fullLegalName
+
+class FileData:
+    def __init__(self, ipfsHash, fileName, authorName, accessList):
+        self.ipfsHash = ipfsHash
+        self.fileName = fileName
+        self.authorName = authorName
+        self.accessList = accessList
+
+class Account:
+    def __init__(self, username, password, role, fullLegalName):
+        self.username = username
+        self.password = password
+        self.role = role
+        self.fullLegalName = fullLegalName
+
+class GivenBlock:
+    def __init__(self, index, timestamp, prevHash, hash, validatorName, transactionType, payload):
+        self.index = index                          # block's position in the blockchain
+        self.timestamp = timestamp                  # when block was created (<year>-<mh>-<dy> <hr>:<mi>:<se>.<millis>)
+        self.prevHash = prevHash                    # 64-character hash of previous block (blank for genesis)
+        self.validatorName = validatorName          # address of the validator (blank for genesis)
+        self.hash = hash    # hash for the block
+        self.transactionType = transactionType      # either "Upload", "Download", "Create_Account", or "Genesis"
+        self.payload = payload                      # ** EITHER FILEDATA OR ACCOUNT OBJECT
+
+# Block represents each 'item' in the blockchain
+class Block:
+    def __init__(self, index, timestamp, prevHash, validatorName, transactionType, payload):
+        self.index = index                          # block's position in the blockchain
+        self.timestamp = timestamp                  # when block was created (<year>-<mh>-<dy> <hr>:<mi>:<se>.<millis>)
+        self.prevHash = prevHash                    # 64-character hash of previous block (blank for genesis)
+        self.validatorName = validatorName          # address of the validator (blank for genesis)
+        self.hash = self.calculate_block_hash()     # hash for the block
+        self.transactionType = transactionType      # either "Upload", "Download", "Create_Account", or "Genesis"
+        self.payload = payload                      # ** EITHER FILEDATA OR ACCOUNT OBJECT
+        
+        # update this depending on how sign-in/authorization works:
+        self.approved_IDs = []
+
+    # calculateHash is a simple SHA256 hashing function
+    def calculate_hash(self, s):
+        h = hashlib.sha256()
+        h.update(s.encode('utf-8'))
+        return h.hexdigest()
+
+
+    # calculateBlockHash returns the hash of all block information
+    def calculate_block_hash(self):
+        record = str(self.index) + self.timestamp + self.prevHash
+        return self.calculate_hash(record)
+
+# Blockchain is a series of validated Blocks
+blockchain = []
+temp_blocks = []
+
+#Private local blockchain
+currentBlockchainData = []
+
+#client tcp address array
+nodes = []
+
+# candidate_blocks handles incoming blocks for validation
+candidate_blocks = []
+candidate_blocks_lock = threading.Lock()
+
+# keep up with all uploaded IPFS hashes and file names
+ipfsHashes = []
+fileNames = []
+accountNames = []
+# announcements broadcasts winning validator to all nodes
+# hi this is caleb. this list isn't called anywhere but idk the plan for it so
+# i'm leaving it in
+announcements = []
+
+targetIP = ""
+targetIPLock = threading.Lock()
+loggedIn = False
+loggedInLock = threading.Lock()
+validatorLock = threading.Lock()
+currentLoggedInUserLock = threading.Lock()
+candidateBlocks = [] # candidateBlocks handles incoming blocks for validation
+candidateBlocksLock = threading.Lock()
+
+# validators keeps track of open validators and balances
+# validators = {}
+validators = []
+validator = Validator(0, Account("", "", "?", "")) # keep track of current validator
+stopThreads = False # use flag to stop threading
+
+apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6ImE0NmE4MmFjLWJlYjEtNGM4MC05MjIwLTIxZDFlNGQ3MGM1NyIsIm9yZ0lkIjoiMzU5ODUyIiwidXNlcklkIjoiMzY5ODMwIiwidHlwZUlkIjoiNTY2M2MwZjAtMmM3Mi00N2YxLWJkMDktNTM1M2RmYmZhNjhhIiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE2OTY0NDQ5MTgsImV4cCI6NDg1MjIwNDkxOH0.kW9jP_Y_2JA70nCkUaBQMW329kQK6vuyHIfFNym0SNs"
+
+blockchainMessage = "default_blockchain_message"
+
+
+#Function to set the logged in status
+def setLoggedInStatus(status):
+    global loggedIn
+    with loggedInLock:
+        loggedIn = status
+
+#Function to set the target IP given by the user
+def setTargetIP(newIP):
+    global targetIP
+    with targetIPLock:
+        targetIP = newIP
+
+# generate_genesis_block creates the genesis block
+def generate_genesis_block():
+    t = str(datetime.now())
+    genesis_block = Block(0, t, "", "", "Genesis", 0)
+    return genesis_block
+
+# generate_block creates a new block using the previous block's hash
+def generate_block(oldBlock, address, transactionType, payload):
+    t = str(datetime.now())
+    new_block = Block(oldBlock.index + 1, t, oldBlock.hash, address, transactionType, payload)
+    return new_block
+
+def generate_sample_blocks():
+    t = str(datetime.now())
+    address = ""
+    address = calculate_hash(t)
+    accessList = []
+    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmRB39JYBwEqfpDJ5czsBpxrBtwXswTB4HUiiyvhS1b7ii", "chest_xray.png", "Genesis", accessList)))
+    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmeUp1ciEQnKo9uXLi1SH3V6Z6YQHtMHRgMbzNLaHt6gJH", "Patient Info.txt", "Genesis", accessList)))
+    blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmeuNtvAJT8HMPgzEyuHCnWiMQkpwHBtAEHmzH854TqJXW", "RADRPT 08-13-2023.pdf", "Genesis", accessList)))
+    #blockchain.append(generate_block(blockchain[-1], address, "Upload", FileData("QmYRJY3Uq8skTrREx7aFkE7Ym7hXA6bk5pqJE9gWrhFB6n", "Project Timeline.pdf", "Genesis", accessList)))
+
+currentLoggedInUser = Account()
+
+#Need to change to password hash, and way to keep the salt safe
+#Need to save username and password
+def login(username, password, localBlockchain):
+    for block in localBlockchain:
+        if block.transactionType == "Create_Account":
+            if block.payload.username == username:
+                if block.payload.password == password:
+                    with currentLoggedInUserLock:
+                        global currentLoggedInUser
+                        currentLoggedInUser.fullLegalName = block.payload.fullLegalName
+                        currentLoggedInUser.username = block.payload.username
+                        currentLoggedInUser.password = block.payload.password
+                        currentLoggedInUser.role = block.payload.role
+                    return True
+    return  False
+
+
+def uploadIpfs(author, fileName, localBlockchain, fileContent, FILENAME):#def uploadIpfs(conn, symmetricKey):
+
+    try:
+        #Tells the other thread to upload a file
+        messageQueue.put("upload_file")
+        #Loads the file content into the queue for processing
+        messageQueue.put(fileContent)
+        time.sleep(1)
+        #Waits until the queue is not empty, by sleeping for a second
+        while messageQueue.empty():
+            time.sleep(1)
+        #Gets the status of the upload operations
+        return messageQueue.get()
+    
+        #The following code may be needed in the upload function
+
+        #Might need to save a copy of the uploaded file to the UploadedFile lists
+        #T, here. Copy the file and make the nzew one encrypted.
+        #Then, upload the encrypted file
+        #Then, delete the encrypted file
+        """
+        #Gets the location of the current working directory
+        tempFilePath = os.getcwd() + "/.tmp"
+        tempFilename = fileName.split('/')[-1]     #Gets the name of the file
+        encryptedFileLocation = tempFilePath + "/" + tempFilename
+        #Make sure the file exists and that it is hidden
+        if not os.path.exists(tempFilePath):
+            os.mkdir(tempFilePath)      #Makes the directory
+            os.system(f'attrib +h "{tempFilePath}"')        #Makes it hidden
+        #T here, use the symmetric key to copy and encrypt the file before sending it on
+        SE.encryptFile(symmetricKey, fileName, encryptedFileLocation)
+        #In the command line, replace fileName[1:-3] with encryptedFileLocation
+        """
+        #Converts the file data to base-64 encoded text
+        convertedData = base64.b64encode(fileContent)
+        #Gets the string of the file into utf-8 text
+        convertedDataString = convertedData.decode('utf-8')
+
+        #Declares the body of the message
+        ipfsBody = [{
+            "path": "uploaded_file", #fileName,
+            "content": convertedDataString #"iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAApgAAAKYB3X3"
+        }]
+
+        #Does not worry about a duplicate file name as that is taken care of in the Java code
+
+        #Puts the file on ipfs
+        ipfsUrl = evm_api.ipfs.upload_folder(api_key=apiKey, body=ipfsBody)[0]["path"]
+        parsedPath = ipfsUrl.split('/')	#splits up the file text
+        
+        hash = parsedPath[4]            # cleans up the hash and the file name
+        ipfsHashes.append(hash)        # update the hash and file lists
+        fileNames.append(fileName)
+
+        #Deletes the temorary upload file
+        #os.remove(encryptedFileLocation)
+
+        accessList = []
+        newFileData = FileData(hash, fileName, author, accessList)
+        #addToCandidateBlocks("Upload", newFileData)
+
+        newBlock = generateBlock(blockchain[-1], author, "Upload", newFileData)
+
+        if isBlockValid(newBlock, blockchain[-1]):
+            blockchain.append(newBlock)
+        return blockchain
+    except:
+        return None
+
+
+# generate_block creates a new block using the previous block's hash
+def generateBlock(oldBlock, address, transactionType, payload):
+    t = str(datetime.now())
+    new_block = Block(oldBlock.index + 1, t, oldBlock.hash, address, transactionType, payload)
+    return new_block
+
+def isBlockValid(newBlock, oldBlock):
+    if oldBlock.index + 1 != newBlock.index:
+        return False
+
+    if oldBlock.hash != newBlock.prevHash:
+        return False
+
+    if newBlock.calculate_block_hash() != newBlock.hash:
+        return False
+
+    return True
+
+def retrieveIpfs(localBlockchain, fileName, ifpsHash):#def retrieveIpfs(conn, symmetricKey):
+    url = "https://ipfs.moralis.io:2053/ipfs/" + ifpsHash + "/uploaded_file"	#does the url to retrieve the file from IPFS
+    r = requests.get(url, allow_redirects=True)
+
+    accessList = []
+    newFileData = FileData(hash, fileName, validator.address, accessList)
+    addToCandidateBlocks("Download", newFileData)
+
+    #T here, Use symmetric key to decrypt the file, r.content
+    #This function opens the first file, reads the dencrypted data, closes the file
+    #Ten opens the second file, clears it, writes all decrypted data to it, then closes the file
+    #SE.decryptFile(symmetricKey, file_name, file_name)
+
+    return r.content
+
+    #Loads the blockchain into the message queue
+    messageQueue.put("download_file")
+    time.sleep(1)
+    #Waits until the queue is not empty, by sleeping for a second
+    while messageQueue.empty():
+        time.sleep(1)
+
+    #Gets and returns the new file from the other thread
+    newFile = messageQueue.get()
+
+    #Process file here
+    return newFile
+
+
+#Function to forcefully refresh the blockchain
+def refreshBlockchain():
+    #Connect with the other nodes and get the most recent version of the blockchain
+    messageQueue.put("get_blockchain")
+    time.sleep(1)
+    #Waits until the queue is not empty, by sleeping for a second
+    if messageQueue.empty():
+        #Returns the local blockchain
+        return currentBlockchainData
+    
+    #Else, the blockchain is not empty, so loop through the message queue until it is
+    currentBlockchainData = messageQueue.get()
+    #Loops until the queue is empty, i.e. no new blockchains are available
+    while not messageQueue.empty():
+        currentBlockchainData = messageQueue.get()      #Gets the most recent blockchain data
+    #Returns the most up to date blockchain
+    return currentBlockchainData
+    #Gets and returns the new blockchain
+    return messageQueue.get()
+    #Returns the newest version of the blockchain
+    return blockchain
+
+#Function to loop through the given blockchain and pull out the file names
+def getFileList(localBlockchain):
+    newFileNameList = []
+    for block in localBlockchain:
+        if block.index == 0:
+            continue
+        if block.transactionType == "Upload" and block.payload.fileName not in newFileNameList:
+            newFileNameList.append(block.payload.fileName)
+    return newFileNameList
+
+#Function to loop through the given blockchain and pull out the hashes for files
+def getipfsHashes(localBlockchain):
+    newIpfsHashesList = []
+    for block in localBlockchain:
+        if block.index == 0:
+            continue
+        if block.transactionType == "Upload" and block.payload.ipfsHash not in newIpfsHashesList:
+            newIpfsHashesList.append(block.payload.ipfsHash)
+    return newIpfsHashesList
+
+#Function to scan the blockchain and list the active users
+def getListActiveUsers(localBlockchain):
+    #Creates a temporary list to hold the active users
+    activeUsers = []
+    #Loops through the entire blockchain searching for active user accounts
+    for block in localBlockchain:
+        #If a block for an account
+        if block.transactionType == "Create_Account":
+            #If the user account is not already in the list of accounts, save it
+            if block.payload.username not in activeUsers:
+                #Saves the current user's username
+                activeUsers.append(block.payload.username)
+    #Returns the list of active users accounts
+    return activeUsers
+
+#Function to get the role of the given user
+def getUserRole(localBlockchain, username):
+    #Loops through the entire blockchain given
+    for block in localBlockchain:
+        #If a block for an account
+        if block.transactionType == "Create_Account":
+            #If the username of the block matches that of 
+            if block.payload.username == username:
+                return  block.payload.role
+    #Should never happen
+    return None
+
+#Function to create a new account
+def createNewAccount(username, password, role, LegalName, localBlockchain):
+    #Loops through the blockchain and if an account has the same username, returns False
+    for block in localBlockchain:
+        if block.transactionType == "Create_Account" and block.payload.username == username:
+            return False
+    
+    #Theoretically, the best check is to get the next blockchain and check the blocks for the addition of a new user
+
+
+    #Need 
+    #Else, the same username does not exist, so create the block
+    blockchain.append(generate_block(blockchain[-1], "", "Create_Account", createAccount(username, password, LegalName, role)))
+    
+    #Theoretically, notify the network thread of a new block
+    #messageQueue.put("add_user")
+    #messageQueue.put(createAccount(username, password, LegalName, role))
+    
+    return True
+
+
+def getTextBlockchain(localBlockchain):
+
+    #messageQueue.put("get_blockchain")
+    #time.sleep(1.0)
+    #Gets the new blockchain
+    #newBlockchain = messageQueue.get()
+    #String to contain the final text version of the blockchain
+    finalText = ""
+    for blockData in localBlockchain:
+        #Do something
+        if blockData.transactionType == "Genesis":
+            finalText = finalText + "\nIndex: " + str(blockData.index) + "\n"
+            finalText = finalText + "Timestamp: " + blockData.timestamp + "\n"
+            finalText = finalText + "Type: " + blockData.transactionType + "\n"
+        else:
+            finalText = finalText + "\nIndex: " + str(blockData.index) + "\n"
+            finalText = finalText + "Timestamp: " + blockData.timestamp + "\n"
+            finalText = finalText + "Previous_Hash: " + blockData.prevHash + "\n"
+            finalText = finalText + "Validator: " + blockData.validatorName + "\n"
+            finalText = finalText + "Hash: " + blockData.hash + "\n"
+            finalText = finalText + "Type: " + blockData.transactionType + "\n"
+            if blockData.transactionType != "Create_Account":
+                finalText = finalText + "IPFS_Hash: " + blockData.payload.ipfsHash + "\n"
+                finalText = finalText + "File_Name: " + blockData.payload.fileName + "\n"
+            else:
+                finalText = finalText + "Username: " + blockData.payload.username + "\n"
+                finalText = finalText + "Password: " + blockData.payload.password + "\n"
+                finalText = finalText + "Role: " + blockData.payload.role + "\n"
+        finalText = finalText + "-----------------------------------------" + "\n"
+
+    return finalText
+
+def calculate_hash(s):  # Added this function
+    h = hashlib.sha256()
+    h.update(s.encode('utf-8'))
+    return h.hexdigest()
+
+#T here, 
+#Function that is guaranteed to generate the keys
+def genKeys():
+    #If both files exist, load the public and private keys
+    if os.path.exists("publicKey.pem") and os.path.exists("privateKey.pem"):
+        #Tries to load the keys, but if something goes wrong, generate new keys and save them
+        try:
+            print("Loading asymmetric keys...")
+            privateKey = AE.loadPrivateKey("publicKey.pem")
+            publicKey = AE.loadPublicKey("privateKey.pem")
+            print("Keys loaded")
+        #Catches any issue with key loading
+        except:
+            print("Key loading failed, generating new assymetric keys...")
+            #Generates the pubic and private keys
+            publicKey, privateKey = AE.generateKey(4096)
+            AE.savePrivateKey(privateKey, "publicKey.pem")
+            AE.savePublicKey(publicKey, "privateKey.pem")
+            print("Keys generated")
+    #Else, the files do not exist, so generate a new set of keys
+    else:
+        #Generates the pubic and private keys
+        print("Generating new assymetric keys...")
+        publicKey, privateKey = AE.generateKey(4096)
+        #Save the new keys
+        AE.savePrivateKey(privateKey, "publicKey.pem")
+        AE.savePublicKey(publicKey, "privateKey.pem")
+        print("Keys generated")
+    
+    #If the symmetric key file exists, load the key
+    if os.path.exists("symmetricKey.pem"):
+        #Tries to load the symmetric key, but if something goes wrong, generate a new key and save it
+        try:
+            print("Loading symmetric key...")
+            privateKey = SE.loadKey("symmetricKey.pem")
+            print("Key loaded")
+        #Catches any issue with key loading
+        except:
+            print("Key loading failed, generating new symmetric key...")
+            #Generates the pubic and private keys
+            symmetricKey = SE.generateAES256Key()
+            #Saves the new key
+            SE.saveKey(symmetricKey, "symmetricKey.pem")
+            print("Key generated")
+    #Else, the files do not exist, so generate a new set of keys
+    else:
+        #Generates the symmetric key
+        print("Generating new symmetric key...")
+        symmetricKey = SE.generateAES256Key()
+        SE.saveKey(symmetricKey, "symmetricKey.pem")
+        print("Key generated")
+
+    return publicKey, privateKey, symmetricKey
+
+keepRunning = True
+messageQueue = Queue()
+
+
+#
+#
+#
+#
+#
+def threadTask():
+    """ 
+    global keepRunning
+    global messageQueue
+    while keepRunning:
+        #If the queue is not empty, process the given message
+        if not messageQueue.empty():
+            currentInstruction = messageQueue.get()
+            #If the instruction is to get the blockchain,
+            if currentInstruction == "get_blockchain":
+                #Performs the normal operations to refresh the blockchain
+
+                #Loads the blockchain into the message queue
+                messageQueue.put(blockchain)
+            #If the instruction is to upload a file,
+            elif currentInstruction == "upload_file":
+                #Loads the blockchain into the message queue
+                fileContent = messageQueue.get()
+                #Performs the operations to upload the file
+
+                #Based on the status, put true or false into the blockchain
+                messageQueue.put(True)
+            #If the instruction is to download a file,
+            elif currentInstruction == "download_file":
+                #Downloads the file
+
+                #Loads the blockchain into the message queue
+                messageQueue.put(downloadedFile)
+            #If the instruction is to add a user
+            elif currentInstruction == "add_user":
+                #Gets the credential information from the messageQueue 
+                username = messageQueue.get()
+                password = messageQueue.get()
+                role = messageQueue.get()
+                legalName = messageQueue.get()
+                #Now, performs operation to add the user account as a block to the network
+                
+                #Based on the status of the add user operation, put True or False on the message queue
+                messageQueue.put(True)
+            #Else, message is not valid, so do nothing
+
+    """
+    myip = comm.myIP()
+
+    signal.signal(signal.SIGINT, signal_handler)
+
+    global iplist
+    
+    self_samaritan_to_client = Queue()
+    client_to_self_samaritan = Queue()
+
+    client_to_server = Queue()
+    server_to_client = Queue()
+
+    server_to_self_samaritan = Queue()
+    self_samaritan_to_server = Queue()
+
+    server_input_to_server = Queue()
+
+    parent_to_child = multiprocessing.Queue()
+
+    #message_queue.Queue()  # create a Shared queue for communication
+    # initial_samaritan_jointo_ip = "146.229.163.144"#input("Enter the IP of a node in the blockchain you want to join: ")
+
+    time.sleep(1)
+    
+
+    threading.Thread(target=run_server, args=(parent_to_child,validator,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server,)).start()
+    time.sleep(2)
+
+    threading.Thread(target=run_client, args=(parent_to_child,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server,)).start()
+
+    # Handle candidate blocks in a separate thread
+    # Define the lambda function
+    candidateThread = threading.Thread(target=lambda: candidateBlocks.append(None) if candidateBlocks else None)
+    candidateThread.start()
+#
+#
+#
+#
+#
+
+#Function to end execution of the thread
+def endThreadTask():
+    global keepRunning
+    keepRunning = False
+
+def main():
+    global keepRunning
+    global messageQueue
+    #Starts a thread and points it to the thread task
+    childThread = threading.Thread(target=threadTask)
+    childThread.start()
+
+    """
+    # Create genesis block and admin account block
+    genesis_block = generate_genesis_block()
+    blockchain.append(genesis_block)
+    generate_sample_blocks()
+    address = ""
+    blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("admin", "admin", "a", "Admin")))
+    blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("root", "root", "p", "Myself")))
+    blockchain.append(generate_block(blockchain[-1], address, "Create_Account", Account("sampleUser", "root", "p", "I")))
+    """
+    time.sleep(2)
+    return blockchain
+
+if __name__ == "__main__":
+    main()
+
+
+
+#
+#T here,
+#Need a way to get the keys from the client and the server
+#So, when the client connects, the server should validate the client, then send the symmetric key
+#Would require a new condition in the main server while loop that when a client connects, the client is validated and gets the key
+#Would also require a corresponding section of code in the client so the client requests the key when first joining the blockchain
+#Might need to happen in client.py or server.py under autotcp
+#Also, might need to convert the formatting potentially from base 64 to utf-8
+#If decoding is needed, just send the encrypted data over the wire and then decrypt it from utf-8
+#
+
+
+
+
+
+
+
+#
+#
+# Below here is the code for threaded network code
+#
+#
+
+
+def myIP():
+    return (ni.ifaddresses('enp0s31f6')[ni.AF_INET][0]['addr'])
+
+def signal_handler(sig, frame):
+    #print('You pressed Ctrl+C!')
+    comm.clientOut.close()
+    comm.blockFile.close()
+    sys.exit(0)
+
+def newBlockchain():
+    genesisBlock = generateGenesisBlock()
+    blockchain.append(genesisBlock)  
+    generateSampleBlocks()
+    blockchainMessage = assembleBlockchain()
+    
+    messageQueue.put(blockchain)
+
+
+def run_client(parent_to_child,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server):#self_samaritan_to_client,client_to_self_samaritan): #needs periodic ip requesting(checking) added
+    comm.write_to_client_out("debug, in client\n")
+    
+    # initial_samaritan_jointo_ip = "10.4.153.165"
+    # initial_samaritan_jointo_ip = "146.229.163.144"
+    initial_samaritan_jointo_ip = ""
+    ###
+    ###Need to change to read from a file
+    while True:
+        with targetIPLock:
+            if targetIP != "":
+                break
+        time.sleep(.1)
+    initial_samaritan_jointo_ip = targetIP#GUI.GUIgetIP()
+    ###
+    # print(f"The IP is: {initial_samaritan_jointo_ip}")
+    # initial_samaritan_jointo_ip = "10.4.153.165"
+    # print(f"Got IP: {initial_samaritan_jointo_ip}")
+
+    # Waiting for a connection with someone. If no immediate connection, then I am the first.
+    # Because I am the first, I create the blockchain.
+    hasCalledCreateBlockchain = False
+    while(1):
+        try:
+            samaritan_ip, samaritan_port = comm.requestConnection(initial_samaritan_jointo_ip, connectport, initial_client, givenport)
+            comm.write_to_client_out ("server accepted my client connection. hooray!")
+            client_to_server.put("call login")
+            # print("Calling login")
+            break
+        except:
+            comm.write_to_client_out("I am client. My request to connect to a server failed.")
+            if (len(blockchain) == 0) and not hasCalledCreateBlockchain:
+                # print("Calling create blockchain!")
+                client_to_server.put("call create blockchain")
+                hasCalledCreateBlockchain = True
+
+    while(1):
+        try:
+            comm.write_to_client_out(f"samaritan receiveport is: {samaritan_port}")
+            time.sleep(1)
+            comm.requestsustainedConnection(samaritan_ip, samaritan_port, client)
+            comm.write_to_client_out("sustained samaritan connection successful. hooray!")
+            break
+        except:
+            comm.write_to_client_out("I am client. My request for sustained connection failed.")
+        
+        time.sleep(1.5)
+
+        while(not server_to_client.empty()):
+            receivedblock = server_to_client.get()
+            blockchain.append(receivedblock)
+        printBlockchain()
+
+    try:
+        while(1): #automatic close response present in receivedatafromserver            
+            #NEED ADMIN BLOCK
+            # print("Requesting the blockchain...")
+            comm.senddatafromclient("requesting your blockchain", client)
+            
+            recvd_chain = comm.receivedatafromsamaritan(client)
+            convertString(recvd_chain)
+
+            # time.sleep(3) #rn iplist updates every second
+
+            while(not server_to_client.empty()):
+                receivedblock = server_to_client.get()
+                blockchain.append(receivedblock)
+            
+            printBlockchain()
+    except:
+        comm.clientOut.close() 
+
+def run_server(parent_to_child,validator,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server):#self_samaritan_to_client, client_to_self_samaritan): #add func to talk to samaritan and samaritan to listen to server (listenServer)
+    global messageQueue
+    global receiveport
+    global givenport
+    global blockchainMessage
+    global blockchain
+    isValidAddress = False
+    
+    comm.bindasServer(connectport, server)
+    comm.listenforRequests(connectport, server)
+    
+    time.sleep(0.5)
+    try:
+        while(1):
+            # accept incoming connections
+
+            # **********************************************************
+            # print(f"checkpoint1")
+            while(client_to_server.empty()):
+                time.sleep(.5)
+
+            # print(f"checkpoint2")
+
+            if (not client_to_server.empty()):
+                call = client_to_server.get()
+                if (call == "call create blockchain"):
+                    newBlockchain()
+                    towrite = assembleBlockchain()
+                    if len(blockchain) < 1:
+                        towrite = "No blockchain here :)"
+                    # else:
+                        # print(f"Blockchain has {len(blockchain)} blocks")
+
+                    # print("create blockchain called")
+                    parent_to_child.put(towrite)
+                    # print(f"qsize2: {parent_to_child.qsize()}")
+                    # print("***** LOGIN NOW GO GO GO")
+
+                elif (call == "call login"):
+                    # print("login plz")
+                    # print("Waiting for blockchain arrival...")
+                    while len(blockchain) < 1:
+                        time.sleep(0.25)
+                    # print("Got blockchain!")
+            # **********************************************************
+
+            requester = comm.acceptconnectportConnection(server) #sit waiting/ready for new clients
+            comm.receivedatafromrequester(requester)
+            comm.approveConnection(requester, givenport) #I tell client what port to talk to me on
+            receiveport = comm.setreceiveequal(givenport)
+            givenport = comm.incgiven(givenport)
+            comm.closerequesterConnection(requester)
+
+            if(1):
+                ppid = os.getpid()
+                # print("Parent process1 PID:", ppid)
+                child_pid = os.fork()
+                #samaritan runs child, server stays parent
+                if child_pid == 0:            #   This code is executed by the child process\
+                    #probably need a read for block 6
+                    while not isValidAddress:
+                        try:
+                            time.sleep(.1)
+
+                            myip = comm.myIP()
+                            self_samaritan.bind((myip, receiveport)) 
+                            # print(f"receiveport is: {receiveport}")
+                            
+                            self_samaritan.listen(0)
+                            neighbor = comm.acceptConnection(self_samaritan) #wait here for client's sustained request
+
+                            isValidAddress = True
+                        except OSError as e:
+                            # print("\n*** OS error occurred:", e.strerror)
+                            # print("Error code:", errno.errorcode[e.errno])
+                            # print("Error arguments:", e.args)
+                            pass
+
+
+                    # time.sleep(0.5)
+
+                    data = "BLOCKCHAIN"
+
+                    while(1):
+                        # time.sleep(4)
+                        # print(f"qsize child IMMEDIATELY: {parent_to_child.qsize()}")                       
+                        time.sleep(.15)
+                        # print("listening for blk request")
+                        recvd_msg = comm.receivedatafromneighbor(neighbor)
+                        # print("Got a blk request!")
+                        if(recvd_msg == "requesting your blockchain"):
+                            # print("sending blkchn")
+
+                            while(parent_to_child.empty()):
+                                time.sleep(.1)
+
+                            # print("Passed parent_to_child loop!")
+                            blockchain2 = parent_to_child.get()
+
+                            # print(f"sending {blockchain2}")
+                            # print("*** Sending data to neighbor!")
+                            comm.senddatatoneighbor(neighbor, blockchain2)
+                            # print("\n\nsent")
+
+                        #NEED ADMIN BLOCK
+                        while(not server_to_self_samaritan.empty()):
+                            winner = server_to_self_samaritan.get() #blocking call
+                            if(winner):
+                                blockchain.append(winner)
+
+                            # print("Blockchain updated by server")
+                        
+                else: #SERVER
+                    # time.sleep(1.5)
+                    
+                    inputThread = threading.Thread(target=runInput, args=(server_input_to_server,validator,))
+                    inputThread.start()                    
+
+                    while(server_input_to_server.empty()):
+                        time.sleep(.15)
+
+                    # print("\nPicking winner...")
+                    while stopThreads == False:
+                        time.sleep(.15) # .15 second refresh
+                        with validatorLock:   
+                            if len(validators) > 0:
+                                lotteryWinner = getLotteryWinner().address
+                                with candidateBlocksLock:
+                                    for block in candidateBlocks:
+                                        isTheSameString = True
+                                        letterIndex = 0
+                                        for letter in validators[0].address:
+                                            if letter != lotteryWinner[letterIndex]:
+                                                isTheSameString = False
+                                            letterIndex += 1
+                                        if isTheSameString == True:
+                                            # print(f"Found a validator with name: {lotteryWinner}")
+                                            # make sure candidate index isn't duplicated in existing blockchain (avoid forking):
+                                            indexes = []
+                                            for approvedBlock in blockchain:
+                                                indexes.append(approvedBlock.index)
+                                            if block.index in indexes: # account for forking
+                                                newBlock = generateBlock(blockchain[-1], block.validatorName, block.transactionType, block.payload)
+                                                blockchain.append(newBlock)
+                                                printBlockchain()
+                                                messageQueue.put(blockchain)
+                                                #GUI.setGUIBlockchain(blockchain)
+                                                server_to_self_samaritan.put(newBlock)
+                                            else:
+                                                blockchain.append(block)
+                                                printBlockchain()
+                                                messageQueue.put(blockchain)
+                                                #GUI.setGUIBlockchain(blockchain)
+                                                server_to_self_samaritan.put(block)
+                                                blk = assembleBlock(block)
+                                                parent_to_child.put(blk)
+
+                                            candidateBlocks.remove(block)
+                                            changeFlag = True
+                                            blockchainMessage = assembleBlockchain()
+                                            break
+                            
+
+                    comm.senddatatoneighbor(neighbor, blockchainMessage)
+                    message = comm.receivedatafromneighbor(neighbor)
+                    # print("server looping")
+    except OSError:
+        # print("it's the outer except")
+        pass
+
+def runInput(server_input_to_server, validator):
+    # print(f"Running runInput...")
+    while True:
+        while True:
+            with loggedInLock:
+                if loggedIn:
+                    break
+            time.sleep(0.15)
+            if len(validators) > 0:
+                validators.remove(validator)
+        
+        ###Do something here
+        ###
+        with currentLoggedInUserLock:
+            account = currentLoggedInUser#GUI.getGUIAccount()
+        isAccountFound = False
+        for _validator in validators:
+            if account.username == _validator.address:
+                isAccountFound = True
+        if not isAccountFound:
+            validator = createValidator(account)
+            ###Do something here
+            ###
+
+            #GUI.setGUIValidator(validator)
+            
+            # print("Validator created.")
+
+        with candidateBlocksLock:
+            GUICandidateBlocks = candidate_blocks
+            if len(GUICandidateBlocks) > 0:
+                proposedBlock = GUICandidateBlocks[0]
+                payload = proposedBlock.payload
+                if proposedBlock.transactionType == "Upload":
+                    candidateBlock = addToCandidateBlocks("Upload", payload, validator)
+                    server_input_to_server.put(candidateBlock)
+                elif proposedBlock.transactionType == "Download":
+                    candidateBlock = addToCandidateBlocks("Download", payload, validator)
+                    server_input_to_server.put(candidateBlock)
+                elif proposedBlock.transactionType == "Create_Account":
+                    candidateBlock = addToCandidateBlocks("Create_Account", payload, validator)
+                    server_input_to_server.put(candidateBlock)
+                ###Do something here
+                #
+                #GUI.removeCandidateBlock(proposedBlock)
+        time.sleep(0.1)
+
+
+def generateGenesisBlock(): # generate_genesis_block creates the genesis block
+    t = str(datetime.now())
+    # genesisBlock = Block(0, t, "", "", "Genesis", 0)
+    genesisBlock = Block(0, t, "", "admin", "Create_Account", Account("admin", "admin", "a", "Admin"))
+    return genesisBlock
+
+def generateSampleBlocks():
+    t = str(datetime.now())
+
+    address = "admin"
+    accessList = []
+    blockchain.append(generateBlock(blockchain[-1], address, "Upload", FileData("QmRB39JYBwEqfpDJ5czsBpxrBtwXswTB4HUiiyvhS1b7ii", "chest_xray.png", "Genesis", accessList)))
+    blockchain.append(generateBlock(blockchain[-1], address, "Upload", FileData("QmeUp1ciEQnKo9uXLi1SH3V6Z6YQHtMHRgMbzNLaHt6gJH", "Patient Info.txt", "Genesis", accessList)))
+    blockchain.append(generateBlock(blockchain[-1], address, "Upload", FileData("QmeuNtvAJT8HMPgzEyuHCnWiMQkpwHBtAEHmzH854TqJXW", "RADRPT 08-13-2023.pdf", "Genesis", accessList)))
+    blockchain.append(generateBlock(blockchain[-1], address, "Upload", FileData("QmYRJY3Uq8skTrREx7aFkE7Ym7hXA6bk5pqJE9gWrhFB6n", "Project Timeline.pdf", "Genesis", accessList)))
+    blockchain.append(generateBlock(blockchain[-1], address, "Create_Account", Account("d", "d", "d", "Dr. Doctor")))
+
+def createFirstBlocks():
+    genesisBlock = generateGenesisBlock()
+    blockchain.append(genesisBlock)
+    address = ""
+    # blockchain.append(generateBlock(blockchain[-1], address, "Create_Account", Account("admin", "admin", "a", "Admin")))
+    # generateSampleBlocks()
+
+def printBlockchain(): #makes the blockchain print better!
+    with open('blockchainLog.txt', 'w') as file:
+        file.write(f"\nPROCESS ID: {os.getpid()}\n")
+        for block in blockchain:
+            file.write(f"\nIndex: {block.index}\n")
+            file.write(f"Timestamp: {block.timestamp}\n")
+            file.write(f"Previous_Hash: {block.prevHash}\n")
+            file.write(f"Validator: {block.validatorName}\n")
+            file.write(f"Hash: {block.hash}\n")
+            file.write(f"Type: {block.transactionType}\n")
+            if block.transactionType != "Create_Account":
+                file.write(f"IPFS_Hash: {block.payload.ipfsHash}\n")
+                file.write(f"File_Name: {block.payload.fileName}\n")
+            else:
+                file.write(f"Username: {block.payload.username}\n")
+                file.write(f"Password: {block.payload.password}\n")
+                file.write(f"Role: {block.payload.role}\n")
+            file.write("-----------------------------------------\n")
+    
+
+def assembleBlockchain(): #assembles blockchain to be sent to requesting neighbor
+    message = ""
+    for block in blockchain:
+        if block.transactionType == "Genesis":
+            genesis = expandGenesisBlock()
+            message = message + genesis
+        else:
+            standardBlock = expandStandardblock(block)
+            message = message + standardBlock
+            if block.transactionType != "Create_Account":
+                hash = "IPFS_Hash: " + block.payload.ipfsHash
+                filename = "File_Name: " + block.payload.fileName
+                type = "Type: " + block.transactionType
+                upload = "\n" + hash + "\n" + filename + "\n" + type
+                message = message + upload
+            else:
+                credentialBlock = expandCredentials(block)
+                message = message + credentialBlock
+    return message    
+
+def assembleBlock(block): #assembles block to be sent to requesting neighbor
+    message = ""
+    if block.transactionType == "Genesis":
+        genesis = expandGenesisBlock()
+        message = message + genesis
+    else:
+        standardBlock = expandStandardblock(block)
+        message = message + standardBlock
+        if block.transactionType != "Create_Account":
+            hash = "IPFS_Hash: " + block.payload.ipfsHash
+            filename = "File_Name: " + block.payload.fileName
+            type = "Type: " + block.transactionType
+            upload = "\n" + hash + "\n" + filename + "\n" + type
+            message = message + upload
+        else:
+            credentialBlock = expandCredentials(block)
+            message = message + credentialBlock
+    return message    
+
+def expandGenesisBlock(): #assembles genesis block to be sent to requesting neighbor
+    block = blockchain[0]
+    index = "Index: " + str(block.index)
+    time = "Timestamp: " + block.timestamp
+    type = "Type: " + block.transactionType
+    genesis = "\n" + index + "\n" + time + "\n"+ type
+    return genesis       
+
+def expandStandardblock(block): #assembles standard block to be sent to requesting neighbor
+    index = "Index: " + str(block.index)
+    time = "Timestamp: " + block.timestamp
+    #type = "Type: " + block.transactionType
+    prevHash = "Previous_Hash: " + block.prevHash
+    hash = "Hash: " + block.hash
+    validator = "Validator: " + block.validatorName
+    message1 = "\n" + index + "\n" + time + "\n" + prevHash + "\n" + hash + "\n" + validator
+    return message1
+
+def expandCredentials(block): #assembles user credential block to be sent to requesting neighbor
+    # print("bruh")
+    username = "Username: " + block.payload.username
+    password = "Password: " + block.payload.password
+    role = "Role: " + block.payload.role
+    type = "Type: " + block.transactionType
+    message3 = "\n" + username + "\n" + password + "\n" + role + "\n" + type
+    return message3
+
+def convertString(currentBlockchain):
+    blockDictionary = {}
+    delimiters = ["\n"]
+    for delimiter in delimiters:
+        currentBlockchain = " ".join(currentBlockchain.split(delimiter))
+    result = currentBlockchain.split()
+    #print(result)
+    i = 0
+    blockDictionary["Previous_Hash"] = "Default"
+    blockDictionary["Validator"] = "Default"
+    blockDictionary["Hash"] = "hash"
+    accessList = []
+    for item in result:
+        if item == "Index:":
+            blockDictionary["Index"] = result[i + 1]
+        elif item == "Timestamp:":
+            blockDictionary["Timestamp"] = result[i + 1]+ " " + result[i+2]
+        elif item == "Previous_Hash:":
+            blockDictionary["Previous_Hash"] = result[i + 1]
+        elif item == "Hash:":
+            blockDictionary["Hash"] = result[i + 1]
+        elif item == "Validator:":
+            blockDictionary["Validator"] = result[i + 1]
+        elif item == "IPFS_Hash:":
+            blockDictionary["IPFS_Hash"] = result[i + 1]
+        elif item == "File_Name:":
+            blockDictionary["File_Name"] = result[i + 1]
+        elif item == "Username:":
+            blockDictionary["Username"] = result[i + 1]
+        elif item == "Password:":
+            blockDictionary["Password"] = result[i + 1]
+        elif item == "Role:":
+            blockDictionary["Role"] = result[i + 1]
+        elif item == "Type:":
+            blockDictionary["Type"] = result[i + 1]
+            if blockDictionary['Type'] == 'Create_Account':
+                # print("I made it to account")
+                username = blockDictionary['Username']
+                password = blockDictionary['Password']
+                role = blockDictionary['Role']
+                fullLegalName = "admin"
+                payload = Account(username, password, role, fullLegalName)
+            elif (blockDictionary['Type'] == 'Upload') or (blockDictionary['Type'] == 'Download'):
+                # print("I made it to upload/download")
+                ipfsHash = blockDictionary['IPFS_Hash']
+                fileName = blockDictionary['File_Name']
+                validator = blockDictionary['Validator']
+                payload = FileData(ipfsHash, fileName, validator, accessList)
+            else:
+                # print(f"block type is: {blockDictionary['Type']}")
+                payload = FileData("", "", "", accessList)
+            index = int(blockDictionary['Index'])
+            timestamp = blockDictionary['Timestamp']
+            prevHash = blockDictionary['Previous_Hash']
+            hash = blockDictionary['Hash']
+            validatorName = blockDictionary['Validator']
+            transactionType = blockDictionary['Type']
+            newBlock = GivenBlock(index, timestamp, prevHash, hash, validatorName, transactionType, payload)
+            blockchain.append(newBlock)
+
+        i += 1
+    messageQueue.put(blockchain)
+    #GUI.setGUIBlockchain(blockchain)
+    return result
+
+def createValidator(currentAccount):
+    #Randomly stakes coins to prevent a favored node
+    balance = randint(1,100)
+
+    newValidator = Validator(balance, currentAccount)
+
+    with validatorLock:
+        validators.append(newValidator)
+        for validator in validators:
+            # print(f"{validator.address} : {validator.balance}")  
+            pass           
+
+    return newValidator
+
+def createAccount(username, password, name, roleSelection): # , root
+    # print("role is " + roleSelection)
+    if roleSelection == "Admin":
+        role = "a"
+    elif roleSelection == "Doctor":
+        role = "d"
+    else:
+        role = "p"
+    newAccount = Account(username, password, role, name)
+    # addToCandidateBlocks("Create_Account", newAccount)
+    # print(f"Created account for: {newAccount.fullLegalName}")
+
+    # root.children["createAccountMenu"].children["statusLabel"].configure(text=f"{newAccount.fullLegalName}'s account successfully created!")
+
+    return newAccount
+
+def addToCandidateBlocks(transactionType, payload, validator):
+    with validatorLock:
+        oldLastIndex = blockchain[-1]
+    newBlock = generateBlock(oldLastIndex, validator.address, transactionType, payload)
+
+    if isBlockValid(newBlock, oldLastIndex):
+        with candidateBlocksLock:
+            candidateBlocks.append(newBlock)
+    
+    return newBlock
+
+    #sendtoneighbor(newBlock)
+
+# calculate weighted probability for each validator
+def getLotteryWinner():
+    weightedValidators = validators.copy()
+    balanceTotal = 0
+    prevBalance = 0
+    chosenValidator = "not_chosen"
+    loopIndex = 0
+
+    # get the total of all balances and amount of all validators
+    for validator in validators:
+        balanceTotal += validator.balance
+
+    # get a random number to choose lottery winner
+    randInt = randint(0, balanceTotal)
+
+    # calculate the new balances and choose winner
+    for validator in weightedValidators:
+        # balance = validator.balance
+        newBalance = validator.balance + prevBalance
+        weightedValidators[loopIndex].balance = newBalance
+        loopIndex += 1
+        # weighted_validators.update({validator : new_balance})
+        prevBalance = newBalance
+        if newBalance >= randInt:
+            chosenValidator = validator
+            break
+
+    return chosenValidator
+
+
+###Function is not used
+def getBlockchain():
+    # print(f"*getBlockchain* Last block index: {blockchain[-1].index}")
+    return blockchain

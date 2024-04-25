@@ -47,6 +47,8 @@ public class AdminFragment extends Fragment
                 {
                     public void onClick(DialogInterface logoutDialog, int ID)
                     {
+                        //Mark the user as logged out
+                        tempCaller.setLoggedIn(false);
                         //Erase the needed files
 
                         //Navigate back to the login Fragment
@@ -90,6 +92,8 @@ public class AdminFragment extends Fragment
                 ViewDataFragment newFragment = new ViewDataFragment();
                 //Declares a new bundle to handle the string being sent to the next fragment
                 Bundle stringBundle = new Bundle();
+                //Updates the local blockchain first
+                tempCaller.refreshBlockchain();
                 //Calls the function to get the list of active users
                 String currentBlockchain = tempCaller.getCurrentBlockchain();
                 //Adds the string to the bundle
@@ -115,6 +119,8 @@ public class AdminFragment extends Fragment
                 Bundle stringBundle = new Bundle();
                 //String variable to hold the string being passed onto the next fragment
                 String tempData = "\n";
+                //Updates the local blockchain first
+                tempCaller.refreshBlockchain();
                 //Calls the function to get the list of active users
                 ArrayList<String> activeUsers = tempCaller.getListActiveUsers();
                 //Processes the active users and creates a list of their user names

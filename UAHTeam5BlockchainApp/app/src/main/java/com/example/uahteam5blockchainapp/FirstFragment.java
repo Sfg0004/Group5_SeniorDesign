@@ -9,7 +9,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.Manifest;
@@ -29,6 +28,7 @@ public class  FirstFragment extends Fragment
 {
     private boolean LockDown;       //Variable to indicate if the blockchain is not verified. Thus, app is effectively disabled until it can be confirmed
     private FragmentFirstBinding binding;
+    private PythonCode tempCaller;
 
     //Launcher to request permission to use the camera. If permission is granted, launch the camera launcher
     private ActivityResultLauncher<String[]> requestPermissionLauncher = registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), permissions ->
@@ -44,6 +44,8 @@ public class  FirstFragment extends Fragment
     {
         binding = FragmentFirstBinding.inflate(inflater, container, false);
         String[] requiredPermissions1 = {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
+        //Calls the python code object
+        tempCaller = PythonCode.PythonCode(getContext());
         requestPermissionLauncher.launch(requiredPermissions1);      //Launch the permission launcher to get the needed permissions
         return binding.getRoot();
     }
@@ -107,6 +109,8 @@ public class  FirstFragment extends Fragment
                 {
                     public void onClick(DialogInterface logoutDialog, int ID)
                     {
+                        //Mark the user as logged out
+                        tempCaller.setLoggedIn(false);
                         //Erase the needed files
 
                         //Navigate back to the login Fragment

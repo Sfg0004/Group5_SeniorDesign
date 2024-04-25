@@ -4,7 +4,6 @@ import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -47,6 +46,8 @@ public class DownloadFragment extends Fragment
         DefaultColor = Color.parseColor("#D3D3D3");
         //Creates the PythonCode object to download files
         tempCaller = PythonCode.PythonCode(getContext());
+        //Refreshes the blockchain
+        tempCaller.refreshBlockchain();
         //ArrayList to hold the hashes to download
         hashesToDownload = new ArrayList<>();
         //Creates an empty list of file names to download
@@ -185,7 +186,7 @@ public class DownloadFragment extends Fragment
                             {
                                 Log.e("DownloadableHash", availableHashes.get(possibleFilesToDownload.indexOf(tempName)));
                                 //Downloads the file given the hash and the location where the file will be downloaded
-                                tempCaller.downloadFile(availableHashes.get(possibleFilesToDownload.indexOf(tempName)), requireContext().getExternalFilesDir(null) + "/DownloadedFiles/" + tempName);
+                                tempCaller.downloadFile(availableHashes.get(possibleFilesToDownload.indexOf(tempName)), requireContext().getExternalFilesDir(null) + "/DownloadedFiles/" + tempName, tempName);
                                 Toast.makeText(getContext(), "File downloaded. Opening", Toast.LENGTH_SHORT).show();
 
                                 newButton.setBackgroundColor(DefaultColor);
@@ -282,7 +283,7 @@ public class DownloadFragment extends Fragment
                         {
                             Log.e("DownloadableHash", availableHashes.get(possibleFilesToDownload.indexOf(filesToDownload.get(0))));
                             //Downloads the file given the hash and the location where the file will be downloaded
-                            tempCaller.downloadFile(availableHashes.get(possibleFilesToDownload.indexOf(filesToDownload.get(0))), requireContext().getExternalFilesDir(null) + "/DownloadedFiles/" + filesToDownload.get(0));
+                            tempCaller.downloadFile(availableHashes.get(possibleFilesToDownload.indexOf(filesToDownload.get(0))), requireContext().getExternalFilesDir(null) + "/DownloadedFiles/" + filesToDownload.get(0), filesToDownload.get(0));
 
                             //Gets the current linear layout
                             LinearLayout linearLayout = binding.DownloadedFilesList;
@@ -329,7 +330,7 @@ public class DownloadFragment extends Fragment
                                     Log.e("DownloadedHash", availableHashes.get(possibleFilesToDownload.indexOf(filesToDownload.get(i))));
                                     Log.e("DownloadedFile", filesToDownload.get(i));
                                     //Download the file
-                                    tempCaller.downloadFile(availableHashes.get(possibleFilesToDownload.indexOf(filesToDownload.get(i))), requireContext().getExternalFilesDir(null) + "/DownloadedFiles/" + filesToDownload.get(i));
+                                    tempCaller.downloadFile(availableHashes.get(possibleFilesToDownload.indexOf(filesToDownload.get(i))), requireContext().getExternalFilesDir(null) + "/DownloadedFiles/" + filesToDownload.get(i), filesToDownload.get(i));
                                     numFilesDownloaded++;       //Increments the number of files downloaded
                                 }
                             }

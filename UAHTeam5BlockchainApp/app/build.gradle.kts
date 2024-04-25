@@ -61,6 +61,8 @@ chaquopy {
         {
             install("moralis")
             install("requests")
+            install("netifaces")
+            install("ptvsd")
         }
     }
 }
