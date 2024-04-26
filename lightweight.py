@@ -527,6 +527,12 @@ def convertString(currentBlockchain):
         i += 1
     return localBlockchain
 
+#Function to ensure the data being sent in is
+def isBlockchain(testBlockchain):
+    if type(testBlockchain) is list:
+        return True
+    return False
+
 
 #The function needs 3, maybe 4, operations based on what blocks are generated
 #Create Account
@@ -577,16 +583,17 @@ def sendRequest(sendRequestMessage, blockToAdd, targetIP="146.229.163.145", auth
         elif sendRequestMessage == "Create_User":
             #Sends the messages to the connected full node
             clientSocket.send((sendRequestMessage).encode("utf-8")[:4096])
+            time.sleep(0.5)
             clientSocket.send((" ").encode("utf-8")[:4096])
-            clientSocket.send((authorizingUser).encode("utf-8")[:4096])
+            clientSocket.send((str(authorizingUser)).encode("utf-8")[:4096])
             clientSocket.send((" ").encode("utf-8")[:4096])
-            clientSocket.send((blockToAdd.username).encode("utf-8")[:4096])
+            clientSocket.send((str(blockToAdd.username)).encode("utf-8")[:4096])
             clientSocket.send((" ").encode("utf-8")[:4096])
-            clientSocket.send((blockToAdd.password).encode("utf-8")[:4096])
+            clientSocket.send((str(blockToAdd.password)).encode("utf-8")[:4096])
             clientSocket.send((" ").encode("utf-8")[:4096])
-            clientSocket.send((blockToAdd.role).encode("utf-8")[:4096])
+            clientSocket.send((str(blockToAdd.role)).encode("utf-8")[:4096])
             clientSocket.send((" ").encode("utf-8")[:4096])
-            clientSocket.send((blockToAdd.fullLegalName).encode("utf-8")[:4096])
+            clientSocket.send((str(blockToAdd.fullLegalName)).encode("utf-8")[:4096])
             #Closes the socket
             clientSocket.close()
             #If this line is reached(no error have resulted), returns the status of the operation as true
