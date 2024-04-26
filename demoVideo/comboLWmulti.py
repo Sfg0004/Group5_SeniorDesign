@@ -164,11 +164,11 @@ def main():
     child_to_parent = multiprocessing.Queue()
     new_client_for_samaritan = multiprocessing.Queue()
 
-    time.sleep(0.5)
+    #time.sleep(0.5)
     
 
     threading.Thread(target=run_server, args=(lw_to_full,child_to_parent,parent_to_child,validator,new_client_for_samaritan,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server,)).start()
-    time.sleep(1)
+    time.sleep(.25)
 
     threading.Thread(target=run_client, args=(child_to_parent,parent_to_child,new_client_for_samaritan,self_samaritan_to_client,client_to_self_samaritan,client_to_server,server_to_client,server_to_self_samaritan,self_samaritan_to_server,server_input_to_server,)).start()
 
@@ -211,14 +211,14 @@ def run_client(child_to_parent,parent_to_child,new_client_for_samaritan,self_sam
     while(1):
         try:
             comm.write_to_client_out(f"samaritan receiveport is: {samaritan_port}")
-            time.sleep(1)
+            #time.sleep(1)
             comm.requestsustainedConnection(samaritan_ip, samaritan_port, client)
             comm.write_to_client_out("sustained samaritan connection successful. hooray!")
             break
         except:
             comm.write_to_client_out("I am client. My request for sustained connection failed.")
         
-        time.sleep(1.5)
+        time.sleep(1)
 
         while(not server_to_client.empty()):
             receivedblock = server_to_client.get()
@@ -261,8 +261,8 @@ def run_client(child_to_parent,parent_to_child,new_client_for_samaritan,self_sam
 
             print("current index:", ind)
             print("blckchn length:", len(blockchain))
+            time.sleep(.1)
             if(recvdlen > len(blockchain)):
-                print("abc")
                 convertString(recvd_chain)
                 client_to_server.put("new block update:")
                 client_to_server.put(recvd_chain)
@@ -289,7 +289,7 @@ def run_server(lw_to_full,child_to_parent,parent_to_child,validator,new_client_f
     comm.listenforRequests(connectport, server)
     blockchain2 = ""
     
-    time.sleep(0.5)
+    time.sleep(0.25)
     try:
         while(1):
             # accept incoming connections
@@ -323,7 +323,7 @@ def run_server(lw_to_full,child_to_parent,parent_to_child,validator,new_client_f
                     convertString(call)
             # **********************************************************
 
-            threading.Thread(target=run_LW, args=(lw_to_full,validator,)).start()#block needs to go into server_to _self_samaritan
+            threading.Thread(target=run_LW, args=(lw_to_full,)).start()
 
             #moved these here so can add blocks before any connections occur
             inputThread = threading.Thread(target=runInput, args=(server_input_to_server,validator,))
@@ -346,7 +346,7 @@ def run_server(lw_to_full,child_to_parent,parent_to_child,validator,new_client_f
                 if child_pid == 0:            #   This code is executed by the child process\
                     while not isValidAddress:
                         try:
-                            time.sleep(.1)
+                            #time.sleep(.1)
 
                             myip = comm.myIP()
                             self_samaritan.bind((myip, receiveport)) 
@@ -364,7 +364,7 @@ def run_server(lw_to_full,child_to_parent,parent_to_child,validator,new_client_f
                             pass
 
                     while(1):                      
-                        time.sleep(.15)
+                        #time.sleep(.15)
                         if not new_client_for_samaritan.empty():
                             new_neighbor = new_client_for_samaritan.get()
                             neighbor_nodes.append(new_neighbor)
@@ -382,7 +382,7 @@ def run_server(lw_to_full,child_to_parent,parent_to_child,validator,new_client_f
                                 convertString(call)
 
                         for n in neighbor_nodes:
-                                time.sleep(.5)
+                                time.sleep(.75)
                                 
                                 print(f"sending {blockchain2}")
                                 print("*** Sending data to neighbor!")
@@ -399,9 +399,9 @@ def run_server(lw_to_full,child_to_parent,parent_to_child,validator,new_client_f
                 else: #SERVER
 
                     #check
-                    # if(not lw_to_full.empty()):
-                    #     lwBlk = lw_to_full.get()
-                    #     blockchain.append(lwBlk)
+                    if(not lw_to_full.empty()):
+                        lwBlk = lw_to_full.get()
+                        blockchain.append(lwBlk)
 
                     while(1):
                         time.sleep(1)
@@ -458,7 +458,7 @@ def pickWinner(server_to_client,server_to_self_samaritan, parent_to_child):
                     print("length of validators is 0")
                     pass
 
-def run_LW(lw_to_full, validator):
+def run_LW(lw_to_full):
 
     # WIP WILL NEED TO TEST THE ACTUAL GENERATION AND ADDING OF THE NEW BLOCK. DATA WAS RECEIVED
     # FROM THE LW DEVICE BUT WILL REQUIRE FORMMATTING FOR ACCESS LIST (UPLOAD)
@@ -496,13 +496,16 @@ def run_LW(lw_to_full, validator):
                 localAccessList = divided[4]
                 newBlockToAdd = FileData(localHash, localFileName, localAuthor, localAccessList)
                 transactionType = "Upload"
-                newblk = generateBlock(blockchain[-1], validator.address, transactionType, newBlockToAdd)
+
+                newblk = addToCandidateBlocks(transactionType, newBlockToAdd, validator)
                 lwMsg = " "
                 lw1.close()
-                blockchain.append(newblk)
+                #blockchain.append(newblk)
 
                 #OORRRRR MAYBE
                 #lw_to_full.put(newblk)
+
+
 
                 connected = False
 
@@ -510,32 +513,34 @@ def run_LW(lw_to_full, validator):
                 rcv = comm.receivedatafromrequester(lw1)
                 divided = rcv.split(' ')
                 print(divided)
-                localHash = divided[1]
-                localFileName = divided[2]
-                localAuthor = divided[3]
-                localAccessList = divided[4]
+                localHash = divided[2]
+                localFileName = divided[3]
+                localAuthor = divided[1]
+                #localAccessList = divided[4]
                 newBlockToAdd = FileData(localHash, localFileName, localAuthor, localAccessList)
                 transactionType = "Download"
-                newblk = generateBlock(blockchain[-1], validator.address, transactionType, newBlockToAdd)
+                newblk = addToCandidateBlocks(transactionType, newBlockToAdd, validator)
+                #newblk = generateBlock(blockchain[-1], "default addr", transactionType, newBlockToAdd)
                 lwMsg = " "
                 lw1.close()
-                blockchain.append(newblk)
+                #blockchain.append(newblk)
                 connected = False
 
             elif(lwMsg == "Create_User"):
                 rcv = comm.receivedatafromrequester(lw1)
                 divided = rcv.split(' ')
                 print(divided)
-                localUsername = divided[1]
-                localPassword = divided[2]
-                localRole = divided[3]
-                localLegalName = divided[4]
+                localUsername = divided[2]
+                localPassword = divided[3]
+                localRole = divided[1]
+                localLegalName = divided[5]
                 newBlockToAdd = Account(localUsername, localPassword, localRole, localLegalName)
                 transactionType = "Create_Account"
-                newblk = generateBlock(blockchain[-1], validator.address, transactionType, newBlockToAdd)
+                newblk = addToCandidateBlocks(transactionType, newBlockToAdd, validator)
+                #newblk = generateBlock(blockchain[-1], "default", transactionType, newBlockToAdd)
                 lwMsg = " "
                 lw1.close()
-                blockchain.append(newblk)
+                #blockchain.append(newblk)
                 connected = False
 
             time.sleep(0.2)
@@ -733,14 +738,12 @@ def convertString(currentBlockchain):
         elif item == "Type:":
             blockDictionary["Type"] = result[i + 1]
             if blockDictionary['Type'] == 'Create_Account':
-                print("I made it to account")
                 username = blockDictionary['Username']
                 password = blockDictionary['Password']
                 role = blockDictionary['Role']
                 fullLegalName = "admin"
                 payload = Account(username, password, role, fullLegalName)
             elif (blockDictionary['Type'] == 'Upload') or (blockDictionary['Type'] == 'Download'):
-                print("I made it to upload/download")
                 ipfsHash = blockDictionary['IPFS_Hash']
                 fileName = blockDictionary['File_Name']
                 validator = blockDictionary['Validator']
