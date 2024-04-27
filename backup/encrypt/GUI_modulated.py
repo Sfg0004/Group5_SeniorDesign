@@ -14,8 +14,8 @@ import re
 from moralis import evm_api
 import base64
 
+# for file encryption
 from cryptography.fernet import Fernet, InvalidToken
-#import shutil
 
 """
 For IPFS upload/download:
@@ -129,6 +129,9 @@ patientNames = []
 allFiles = []
 
 #*****************************************************************
+# for encryption
+# key was generated and is hard coded so all nodes can decode the files
+# replace here if devleop support for varying keys! :)
 
 fileKey = 'yrnX6PYjWcITai_1Ux6IC1rXlCP7y1TiPC8dcxTi7os='
 fernet = Fernet(fileKey)
@@ -809,34 +812,45 @@ def uploadIPFS(accessName, root):
     if len(root.filename) == 0:
         return
     
-    # get file 
+    # get user file upload choice
     fileName = root.filename
+
+    #read data from original file
     with open(fileName, "rb") as file:
         fileContent = file.read()
 
     #***************************************************************************
-
+    # for encryption
+    #split up the path of the original file 
     parsePath = fileName.split("/")
+    #save jst the file name as name
     name = parsePath[-1]
     
     newFileName = ""
 
+    #for each piece of the file path that was split, add it to the new file path
     for dir in range(len(parsePath)-1):
         newFileName = newFileName + "/" + parsePath[dir]
         print(f"current: {newFileName}")
 
-
+    #using the new file path, put file into subdirectory "processingFiles" then add the file name
+        #to make the new full file path
+        # !!!!! ORIGINAL FILE MUST BE IN THE MAIN DIRECTORY WITH COMBOGUI.PY OR WILL NOT WORK !!!!!!
     newFilePath = f"{newFileName}/processingFiles/{name}"
     print(f"new path: {newFilePath}")
 
+    #  write orignal data to the new file 
     with open(newFilePath, "wb") as processingFile:
         processingFile.write(fileContent)
 
+    #read the new file's data
     with open(newFilePath, "rb") as getFileData:
         fileData = getFileData.read()
 
+    #encrypt the newfile's data
     encrypted = fernet.encrypt(fileData)
 
+    # write over the unencrypted newfile's data with the encrypted data
     with open(newFilePath, "wb") as encrypted_file:
         encrypted_file.write(encrypted)
 
@@ -901,18 +915,24 @@ def downloadIPFS(fileName, root):#def retrieveIpfs(conn, symmetricKey):
     with open(fileName, "wb") as f:
         f.write(r.content)	#opens the file and adds content
 
+    #IPFS downloads the file that was uploaded (encrypted)
 
     try:
+        # optn the encrypted file and read the data
         with open(fileName, "rb") as enc_file:
             encrypted = enc_file.read()
         
+        #decrypted the file data
         decrypted = fernet.decrypt(encrypted)
 
+        # overwrite the encrypted data with the unencrypted data
         with open(fileName, "wb") as dec_file:
             dec_file.write(decrypted)
 
     except InvalidToken:
-        print("invalidtoken\n")
+        # this error almost always go thorwn BUT the decryption WORKED and file was accesssable
+        # just handle the error (the code keeps going if you dont but this will keep the terminal clean)
+        #print("invalidtoken\n")
         pass
 
     #T here, Use symmetric key to decrypt the file, r.content
