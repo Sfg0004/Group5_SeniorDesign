@@ -15,6 +15,7 @@ from moralis import evm_api
 import base64
 
 from cryptography.fernet import Fernet, InvalidToken
+#import shutil
 
 """
 For IPFS upload/download:
@@ -814,9 +815,30 @@ def uploadIPFS(accessName, root):
         fileContent = file.read()
 
     #***************************************************************************
-        encrypted = fernet.encrypt(fileContent)
-        with open(fileName, "wb") as encrypted_file:
-            encrypted_file.write(encrypted)
+
+    parsePath = fileName.split("/")
+    name = parsePath[-1]
+    
+    newFileName = ""
+
+    for dir in range(len(parsePath)-1):
+        newFileName = newFileName + "/" + parsePath[dir]
+        print(f"current: {newFileName}")
+
+
+    newFilePath = f"{newFileName}/processingFiles/{name}"
+    print(f"new path: {newFilePath}")
+
+    with open(newFilePath, "wb") as processingFile:
+        processingFile.write(fileContent)
+
+    with open(newFilePath, "rb") as getFileData:
+        fileData = getFileData.read()
+
+    encrypted = fernet.encrypt(fileData)
+
+    with open(newFilePath, "wb") as encrypted_file:
+        encrypted_file.write(encrypted)
 
     #***************************************************************************
     
