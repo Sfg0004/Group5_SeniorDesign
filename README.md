@@ -33,31 +33,46 @@ a) $ sudo apt install python3-pip
 On full nodes:
 
 1) Get machine IPs:
-	a) $ ip a
-	b) Take note of the IP for each machine.
+	
+ a) $ ip a
+	
+ b) Take note of the IP for each machine.
 
 2) Run the main program on the primary node:
-	a) Navigate to the project directory.
-	b) $ python3 [projectname.py]
-	c) Input the IP of the second machine into the window's IP text box.
+	
+ a) Navigate to the project directory.
+	
+ b) $ python3 [projectname.py]
+	
+ c) Input the IP of the second machine into the window's IP text box.
 
 4) Run the main program on secondary nodes:
-	a) Navigate to the project directory.
-	b) $ python3 [projectname.py]
-	c) Input the IP of the first machine into the window's IP text box.
+	
+ a) Navigate to the project directory.
+	
+ b) $ python3 [projectname.py]
+	
+ c) Input the IP of the first machine into the window's IP text box.
 
 For all future machines:
 5) Run the main program:
-	a) Navigate to the project directory.
-	b) $ python3 [projectname.py]
-	c) Input the IP of any existing machine running the program into the window's IP text box.
+	
+ a) Navigate to the project directory.
+	
+ b) $ python3 [projectname.py]
+	
+ c) Input the IP of any existing machine running the program into the window's IP text box.
 ***************************
 
 
 **** Using the project ****
 1) Login using existing credentials on the blockchain:
-	a) Default username for first admin account: admin
-	b) Default password for first admin account: admin
-	c) Default username for first doctor account: doctor
-	d) Default password for first doctor account: batman
+	
+ a) Default username for first admin account: admin
+	
+ b) Default password for first admin account: admin
+	
+ c) Default username for first doctor account: doctor
+	
+ d) Default password for first doctor account: batman
 ***************************
