@@ -118,7 +118,7 @@ validator = Validator(0, Account("", "", "?", "")) # keep track of current valid
 stopThreads = False # use flag to stop threading
 # key for ipfs upload
 apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6ImE0NmE4MmFjLWJlYjEtNGM4MC05MjIwLTIxZDFlNGQ3MGM1NyIsIm9yZ0lkIjoiMzU5ODUyIiwidXNlcklkIjoiMzY5ODMwIiwidHlwZUlkIjoiNTY2M2MwZjAtMmM3Mi00N2YxLWJkMDktNTM1M2RmYmZhNjhhIiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE2OTY0NDQ5MTgsImV4cCI6NDg1MjIwNDkxOH0.kW9jP_Y_2JA70nCkUaBQMW329kQK6vuyHIfFNym0SNs"
-encryptionKey = ""
+encryptionKey = b'~\x15\x07\xa9\x95\x95\xb9F0\xdb6\x15@\xbbQ_\x92\x0b$I\xbf\x81\xf2\\!\x8d\x85\xe3\xc8Z\xf2S'
 rsaKeyObject = ""
 rsaPublicKey = ""
 rsaPrivateKey = ""
@@ -150,7 +150,7 @@ def main():
     myip = comm.myIP()
 
     global encryptionKey
-    encryptionKey = secrets.token_bytes(32)
+    #encryptionKey = secrets.token_bytes(32)
     GUI.setKey(encryptionKey)
     global rsaPublicKey, rsaPrivateKey
     rsaPublicKey, rsaPrivateKey = rsa.newkeys(1024)
@@ -210,8 +210,6 @@ def run_client(child_to_parent,parent_to_child,new_client_for_samaritan,self_sam
         try:
             samaritan_ip, samaritan_port = comm.requestConnection(initial_samaritan_jointo_ip, connectport, initial_client, givenport)
             comm.write_to_client_out ("server accepted my client connection. hooray!")
-            initial_client.send((rsaPublicKey.save_pkcs1()).decode('utf-8').encode('utf-8')[:4096])
-            rsa.decrypt(initial_client.recv(4096), rsaPrivateKey)
             client_to_server.put("call login")
             print("Calling login")
             break
@@ -351,9 +349,6 @@ def run_server(lw_to_full,child_to_parent,parent_to_child,validator,new_client_f
             comm.receivedatafromrequester(requester)
             comm.approveConnection(requester, givenport) #I tell client what port to talk to me on
             receiveport = comm.setreceiveequal(givenport)
-            publicKey = comm.receivepubkeyfromrequester(requester)
-            comm.sendkeytoneighbor(requester, rsa.encrypt(encryptionKey, rsa.PublicKey.load_pkcs1(publicKey.encode('utf-8'))))
-
             comm.closerequesterConnection(requester)
 
             if(1):
@@ -864,20 +859,21 @@ def getLotteryWinner():
     return chosenValidator
 
 
-def countOccurrences(str, word):
+# def countOccurrences(str, word):
 	
-	# split the string by spaces in a
-	a = str.split(" ")
+# 	# split the string by spaces in a
+# 	a = str.split(" ")
 
-	# search for pattern in a
-	count = 0
-	for i in range(0, len(a)):
+# 	# search for pattern in a
+# 	count = 0
+# 	for i in range(0, len(a)):
 		
-		# if match found increase count 
-		if (word == a[i]):
-		    count = count + 1
-			
-	return count	 
+# 		# if match found increase count 
+# 		if (word == a[i]):
+# 		    count = count + 1
+            
+        
+#     return count	 
 
 
 if __name__ == "__main__":
