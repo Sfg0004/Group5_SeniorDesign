@@ -73,6 +73,12 @@ def receivedatafromrequester(requester_socket): #server method
     print(f"I am server. Received: '{request}'")
 
     return request
+    
+def receivepubkeyfromrequester(requester_socket): #server method
+    request = requester_socket.recv(4096)
+    print(f"I am server. Received: '{request}'")
+
+    return request
 
 def approveConnection(requester_socket, givenport): #server method
     myip = myIP()
