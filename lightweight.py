@@ -37,10 +37,9 @@ lightweightport = 13453
 
 #import netifaces as ni
 
-#T here, import these to use the encryption
-#import asymmetricEncryption as AE
-#import symmetricEncryption as SE
-#import rsa
+#Import these to use the encryption
+import rsa
+from cryptography.fernet import Fernet
 
 class Validator:
     def __init__(self, balance, account): # account is an Account object!
@@ -187,31 +186,19 @@ def login(username, password, localBlockchain):
                     return True
     return False
 
+localFernet = ""
 
-def uploadIpfs(author, fileName, localBlockchain, fileContent, FILENAME, targetIP, accessList):#, symmetricKey):
+def uploadIpfs(fileKey, author, fileName, localBlockchain, fileContent, FILENAME, targetIP, accessList, fileLocation):
     try:
         usersToGiveAccessTo = accessList.split('/')
-        #The following code may be needed in the upload function
 
-        #Might need to save a copy of the uploaded file to the UploadedFile lists
-        #T, here. Copy the file and make the nzew one encrypted.
-        #Then, upload the encrypted file
-        #Then, delete the encrypted file
-        """
-        #Gets the location of the current working directory
-        tempFilePath = os.getcwd() + "/.tmp"
-        tempFilename = fileName.split('/')[-1]     #Gets the name of the file
-        encryptedFileLocation = tempFilePath + "/" + tempFilename
-        #Make sure the file exists and that it is hidden
-        if not os.path.exists(tempFilePath):
-            os.mkdir(tempFilePath)      #Makes the directory
-            os.system(f'attrib +h "{tempFilePath}"')        #Makes it hidden
-        #T here, use the symmetric key to copy and encrypt the file before sending it on
-        SE.encryptFile(symmetricKey, fileName, encryptedFileLocation)
-        #In the command line, replace fileName[1:-3] with encryptedFileLocation
-        """
+        #Creates a Fernet object to encrypt text
+        fernet = Fernet(base64.urlsafe_b64encode(fileKey))
+        with open(fileLocation, 'rb') as f:
+            newFileContent = f.read()
         #Converts the file data to base-64 encoded text
-        convertedData = base64.b64encode(fileContent)
+        data = (fernet.encrypt(newFileContent))
+        convertedData = (base64.b64encode(data))
         #Gets the string of the file into utf-8 text
         convertedDataString = convertedData.decode('utf-8')
 
@@ -222,33 +209,16 @@ def uploadIpfs(author, fileName, localBlockchain, fileContent, FILENAME, targetI
         }]
 
         #Does not worry about a duplicate file name as that is taken care of in the Java code
-
         #Puts the file on ipfs
         ipfsUrl = evm_api.ipfs.upload_folder(api_key=apiKey, body=ipfsBody)[0]["path"]
         parsedPath = ipfsUrl.split('/')	#splits up the file text
         
         #Probably don't need these
         hash = parsedPath[4]            # cleans up the hash and the file name
-        #ipfsHashes.append(hash)        # update the hash and file lists
-        #fileNames.append(fileName)
-
-        #Deletes the temorary upload file
-        #os.remove(encryptedFileLocation)
-
-        #Creates a new data structure to contain the hash
-        #accessList = []
-        #usersToGiveAccessTo=["mike", 'john', 'steve']
         newFileData = FileData(hash, fileName, author, usersToGiveAccessTo)
-        #Need to send these pieces of data
-        #addToCandidateBlocks("Upload", newFileData)
-
-        #-1 for full node determine, and "" for the full node to put in the validator address
-        #newBlock = generateBlock(-1, author, "Download", newFileData)
         return sendRequest("Upload_File", newFileData, targetIP, author)
     except:
-        return "Error"
-    #except Exception as error:
-    #    return error.with_traceback
+        return "Error in uploading"
 
 
 # generate_block creates a new block using the previous block's hash
@@ -269,7 +239,7 @@ def isBlockValid(newBlock, oldBlock):
 
     return True
 
-def retrieveIpfs(localBlockchain, fileName, ifpsHash, username, targetIP):#def retrieveIpfs(conn, symmetricKey):
+def retrieveIpfs(fileKey, localBlockchain, fileName, ifpsHash, username, targetIP, filePath):
     url = "https://ipfs.moralis.io:2053/ipfs/" + ifpsHash + "/uploaded_file"	#does the url to retrieve the file from IPFS
     r = requests.get(url, allow_redirects=True)
 
@@ -282,22 +252,41 @@ def retrieveIpfs(localBlockchain, fileName, ifpsHash, username, targetIP):#def r
     #             r = requests.get(url, allow_redirects=True)
 
 
+    #opens the file and adds content
+    with open(filePath, "wb") as f:
+        f.write(r.content)
+
+    fernet = Fernet(fileKey)
+
+    try:
+        #Open the encrypted file and read the data
+        with open(filePath, "rb") as enc_file:
+            encrypted = enc_file.read()
+        
+        #Decrypts the file data
+        decrypted = fernet.decrypt(encrypted)
+
+        #Overwrites the encrypted data with the unencrypted data
+        with open(filePath, "wb") as dec_file:
+            dec_file.write(decrypted)
+
+    #Else, if there is an error, return false
+    except:
+        return False
+    
     accessList = []
     #Creates a new data structure to contain the hash
     newFileData = FileData(ifpsHash, fileName, username, accessList)
-                                    #-1 for full node determine, and "" for the full node to put in the validator address
-                                    #newBlock = generateBlock(-1, "", "Download", newFileData)
     #Sends a download block creation request showing that the username tried to download the file
     sendRequest("Download_File", newFileData, targetIP, username)
-    #If this needs a block created for adding, add it
 
-    #T here, Use symmetric key to decrypt the file, r.content
-    #This function opens the first file, reads the dencrypted data, closes the file
-    #Ten opens the second file, clears it, writes all decrypted data to it, then closes the file
-    #SE.decryptFile(symmetricKey, file_name, file_name)
+    return True
 
-    return r.content
-
+def decryptFile(fileContents):
+    #Creates a Fernet object to encrypt text
+    fileKey = 'yrnX6PYjWcITai_1Ux6IC1rXlCP7y1TiPC8dcxTi7os='
+    fernet = Fernet(fileKey)
+    return fernet.decrypt(fileContents)
 
 #Function to refresh the blockchain by asking the given node 
 def refreshBlockchain(targetIP):
@@ -306,6 +295,8 @@ def refreshBlockchain(targetIP):
 
 #Function to loop through the given blockchain and pull out the file names
 def getFileList(localBlockchain):
+    if localBlockchain is None:
+        return
     newFileNameList = []
     for block in localBlockchain:
         if block.index == 0:
@@ -407,61 +398,22 @@ def calculate_hash(s):  # Added this function
     h.update(s.encode('utf-8'))
     return h.hexdigest()
 
-#T here, 
-#Function that is guaranteed to generate the keys
+#Function that is used to generate the keys
 def genKeys():
-    #If both files exist, load the public and private keys
-    if os.path.exists("publicKey.pem") and os.path.exists("privateKey.pem"):
-        #Tries to load the keys, but if something goes wrong, generate new keys and save them
-        try:
-            print("Loading asymmetric keys...")
-            privateKey = AE.loadPrivateKey("publicKey.pem")
-            publicKey = AE.loadPublicKey("privateKey.pem")
-            print("Keys loaded")
-        #Catches any issue with key loading
-        except:
-            print("Key loading failed, generating new assymetric keys...")
-            #Generates the pubic and private keys
-            publicKey, privateKey = AE.generateKey(4096)
-            AE.savePrivateKey(privateKey, "publicKey.pem")
-            AE.savePublicKey(publicKey, "privateKey.pem")
-            print("Keys generated")
-    #Else, the files do not exist, so generate a new set of keys
-    else:
-        #Generates the pubic and private keys
-        print("Generating new assymetric keys...")
-        publicKey, privateKey = AE.generateKey(4096)
-        #Save the new keys
-        AE.savePrivateKey(privateKey, "publicKey.pem")
-        AE.savePublicKey(publicKey, "privateKey.pem")
-        print("Keys generated")
-    
-    #If the symmetric key file exists, load the key
-    if os.path.exists("symmetricKey.pem"):
-        #Tries to load the symmetric key, but if something goes wrong, generate a new key and save it
-        try:
-            print("Loading symmetric key...")
-            privateKey = SE.loadKey("symmetricKey.pem")
-            print("Key loaded")
-        #Catches any issue with key loading
-        except:
-            print("Key loading failed, generating new symmetric key...")
-            #Generates the pubic and private keys
-            symmetricKey = SE.generateAES256Key()
-            #Saves the new key
-            SE.saveKey(symmetricKey, "symmetricKey.pem")
-            print("Key generated")
-    #Else, the files do not exist, so generate a new set of keys
-    else:
-        #Generates the symmetric key
-        print("Generating new symmetric key...")
-        symmetricKey = SE.generateAES256Key()
-        SE.saveKey(symmetricKey, "symmetricKey.pem")
-        print("Key generated")
+    #Generates the pubic and private keys
+    return rsa.newkeys(1024)
 
-    return publicKey, privateKey, symmetricKey
+#Function to parse the given data for the the public key
+def getPublicKey(KeyData):
+    return KeyData[0]
 
+#Function to parse the given data for the the private key
+def getPrivateKey(KeyData):
+    return KeyData[1]
 
+#Function to get the file symmetric key
+def getFileKey(targetIP, publicKey, privateKey):
+    return sendRequest("Get_Key", publicKey, targetIP, privateKey)
 
 def convertString(currentBlockchain):
     localBlockchain = []
@@ -534,14 +486,6 @@ def isBlockchain(testBlockchain):
     return False
 
 
-#The function needs 3, maybe 4, operations based on what blocks are generated
-#Create Account
-#Upload File
-#DownloadFile
-#Get most recent blockchain
-
-#sendRequest("Upload_File", newFileData, targetIP, author)
-
 #Function to send the request to the target IP
 def sendRequest(sendRequestMessage, blockToAdd, targetIP="146.229.163.145", authorizingUser=None):
     try:
@@ -598,9 +542,15 @@ def sendRequest(sendRequestMessage, blockToAdd, targetIP="146.229.163.145", auth
             clientSocket.close()
             #If this line is reached(no error have resulted), returns the status of the operation as true
             return "True"
-        #Future code will need this
-        #elif sendRequest == "Get_Key":
-        #    pass
+        #Code to get the encryption key
+        elif sendRequestMessage == "Get_Key":
+            #Sends the message requesting the key
+            clientSocket.send((sendRequestMessage).encode("utf-8")[:4096])
+            time.sleep(0.5)
+            #Sends the message with the public key to encrypt the key
+            clientSocket.send((blockToAdd.save_pkcs1().decode("utf-8")).encode("utf-8")[:4096])
+            #Waits for reception of the file key and decrypts it with the privateKey
+            return rsa.decrypt(clientSocket.recv(4096), authorizingUser)
         #If the desire is to get the blockchain, send a request for it
         elif sendRequestMessage == "Get_Blockchain":
             #Sends the message
@@ -619,8 +569,8 @@ def sendRequest(sendRequestMessage, blockToAdd, targetIP="146.229.163.145", auth
     #Except if something has gone wrong, return false as the operation failed
     except socket.timeout:
         return "DeviceNotOnline"#Except if something has gone wrong, return false as the operation failed
-    except:
-        return "Something went wrong"
+    except Exception as e:
+        return str(e.__cause__)#"Something went wrong"
 
 
 def main(targetIP):
@@ -639,16 +589,3 @@ def main(targetIP):
 
 if __name__ == "__main__":
     main(targetIP="146.229.163.145")
-
-
-
-#
-#T here,
-#Need a way to get the keys from the client and the server
-#So, when the client connects, the server should validate the client, then send the symmetric key
-#Would require a new condition in the main server while loop that when a client connects, the client is validated and gets the key
-#Would also require a corresponding section of code in the client so the client requests the key when first joining the blockchain
-#Might need to happen in client.py or server.py under autotcp
-#Also, might need to convert the formatting potentially from base 64 to utf-8
-#If decoding is needed, just send the encrypted data over the wire and then decrypt it from utf-8
-#
