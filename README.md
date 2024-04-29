@@ -13,6 +13,8 @@ a) $ sudo apt-get update
 
 b) $ sudo apt-get install python3.6
 
+
+
 2) Install pip:
 
 a) $ sudo apt install python3-pip
