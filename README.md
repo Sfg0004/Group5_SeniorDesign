@@ -13,17 +13,19 @@ a) $ sudo apt-get update
 
 b) $ sudo apt-get install python3.6
 
-
-
 2) Install pip:
 
 a) $ sudo apt install python3-pip
 
 3) Install Necessary Imports:
-	a) $ pip install tk
-	b) $ pip install requests
-	c) $ pip install moralis
-	d) $ pip install rsa
+	
+ a) $ pip install tk
+	
+ b) $ pip install requests
+	
+ c) $ pip install moralis
+	
+ d) $ pip install rsa
 ***************************
 
 
