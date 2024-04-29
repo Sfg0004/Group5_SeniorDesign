@@ -1,4 +1,4 @@
-# Group5_SeniorDesign
+# Blockchain Enabled File Sharing
 
 
 
@@ -46,7 +46,7 @@ On full nodes:
 	
  c) Input the IP of the second machine into the window's IP text box.
 
-4) Run the main program on secondary nodes:
+3) Run the main program on secondary nodes:
 	
  a) Navigate to the project directory.
 	
@@ -55,7 +55,7 @@ On full nodes:
  c) Input the IP of the first machine into the window's IP text box.
 
 For all future machines:
-5) Run the main program:
+4) Run the main program:
 	
  a) Navigate to the project directory.
 	
