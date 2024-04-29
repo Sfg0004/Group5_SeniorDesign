@@ -351,8 +351,8 @@ def run_server(lw_to_full,child_to_parent,parent_to_child,validator,new_client_f
             comm.receivedatafromrequester(requester)
             comm.approveConnection(requester, givenport) #I tell client what port to talk to me on
             receiveport = comm.setreceiveequal(givenport)
-            publicKey = comm.receivedatafromrequester(requester)
-            comm.sendkeytoneighbor(requester, rsa.encrypt(rsa.PublicKey.load_pkcs1(publicKey.encode('utf-8')), publicKey))
+            publicKey = comm.receivepubkeyfromrequester(requester)
+            comm.sendkeytoneighbor(requester, rsa.encrypt(encryptionKey, rsa.PublicKey.load_pkcs1(publicKey.encode('utf-8'))))
 
             comm.closerequesterConnection(requester)
 
