@@ -8,6 +8,7 @@ For running on Ubuntu Linux:
 On all machines in terminal:
 
 1) Install python3:
+
 a) $ sudo apt-get update
 b) $ sudo apt-get install python3.6
 
